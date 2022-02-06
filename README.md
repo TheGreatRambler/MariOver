@@ -19,3 +19,5 @@ The backend of [the Mario Maker 2 API](https://tgrcode.com/mm2/docs/) + the scra
 
 # Running
 `uvicorn levelInfoWebserver:app --port 1234` with any port can be used to start the server.
+
+You should then be able to see view `http://localhost:1234/docs/`.
