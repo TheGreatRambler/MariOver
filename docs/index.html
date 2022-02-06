@@ -1,0 +1,807 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+	<title>Documentation</title>
+
+	<link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
+	<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/hack-font/3.3.0/web/hack.min.css" rel="stylesheet">
+	<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/materialize/1.0.0/css/materialize.min.css">
+	<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+
+	<style>
+		body {
+			background-color: #ffcba6;
+		}
+
+		.material-icons {
+			display: inline-flex;
+			vertical-align: text-bottom;
+		}
+
+		#leftCover {
+			position: fixed;
+			top: 0;
+			left: 0;
+			width: 20%;
+			height: 100%;
+			background-color: #57351D;
+			font-family: Hack;
+			font-weight: bold;
+		}
+
+		#rightContent {
+			position: absolute;
+			top: 2%;
+			left: 22%;
+			width: 76%;
+			height: 98%;
+			font-family: Hack;
+			font-weight: bold;
+		}
+
+		#apiTitle {
+			font-size: 45px;
+			font-weight: bold;
+		}
+
+		#endpointCollection {
+			background-color: white;
+		}
+
+		.endpointName {
+			font-size: 14px;
+		}
+
+		.endpointItem {
+			color: blueviolet;
+		}
+
+		.generatedLink {
+			color: rgb(52, 174, 52);
+		}
+
+		.generatedLinkBad {
+			color: rgb(162, 0, 0);
+		}
+
+		.importantParam {
+			color: rgb(162, 0, 0);
+		}
+	</style>
+</head>
+
+<body>
+	<div id="leftCover" class="z-depth-5">
+		<img src="images/logo.png" width="100%">
+		<div class="row">
+			<div class="col s4"><a href="https://twitter.com/tgr_code"><img src="images/twatter.png" width="100%"></a>
+			</div>
+			<div class="col s4"><a href="https://github.com/TheGreatRambler"><img src="images/github.png" width="100%"></a>
+			</div>
+			<div class="col s4"><a href="https://www.patreon.com/thegreatrambler"><img src="images/patreon.png" width="100%"></a></div>
+		</div>
+		<div class="row">
+			<div class="col s12">
+				<p>Made by TheGreatRambler with help from Tatiaus, Gible_V, Funnier04, Warspyking, AppleSinger and TO4Dw
+				</p>
+			</div>
+		</div>
+	</div>
+	<div id="rightContent">
+		<script>
+			function createLink(inputElements, inputElementsVerify, linkElement, transform) {
+				inputElements.forEach(element => {
+					var handleLink = function() {
+						var newLink = transform(inputElements.map(ele => ele.value));
+						linkElement.href = newLink;
+						linkElement.innerHTML = newLink;
+
+						var linkInvalid = false;
+						for (i = 0; i < inputElements.length; i++) {
+							if (inputElementsVerify[i](inputElements[i].value)) {
+								inputElements[i].classList.remove("invalid");
+								inputElements[i].classList.add("valid");
+								if (!linkInvalid) {
+									linkElement.classList.remove("generatedLinkBad");
+									linkElement.classList.add("generatedLink");
+									linkElement.style.pointerEvents = "auto";
+									linkElement.style.userSelect = "text";
+								}
+							} else {
+								inputElements[i].classList.add("invalid");
+								inputElements[i].classList.remove("valid");
+								linkElement.classList.add("generatedLinkBad");
+								linkElement.classList.remove("generatedLink");
+								linkElement.style.pointerEvents = "none";
+								linkElement.style.userSelect = "none";
+								linkInvalid = true;
+							}
+						}
+					};
+
+					element.addEventListener("input", handleLink);
+					handleLink();
+				});
+
+				var newLink = transform(inputElements.map(ele => ele.value));
+				linkElement.href = newLink;
+				linkElement.innerHTML = newLink;
+			}
+		</script>
+
+		<p class="center-align" id="apiTitle">Super Mario Maker 2 Public API</p>
+		<ul class="collapsible" id="endpointCollection">
+			<li>
+				<div class="collapsible-header"><i class="material-icons">article</i>
+					<span class="endpointName">/level_info/<span class="endpointItem">{course_id}</span>
+					</span>
+				</div>
+				<div class="collapsible-body">
+					<p>Returns a JSON file describing the level, including stats like likes and boos and the uploader
+					</p>
+					<i class="material-icons importantParam">priority_high</i>&nbsp;<span class="endpointItem">{course_id}</span>: The 9 digit code used to identify a course
+					<div class="input-field inline">
+						<input placeholder="91CMPM7LF" id="course_id_level_info" type="text" class="validate">
+						<label for="course_id_level_info">Course ID</label>
+					</div>
+					<p><a id="level_info_link" class="generatedLink"></a></p>
+
+					<script>
+						(function() {
+							var course_id = document.getElementById("course_id_level_info");
+
+							document.addEventListener("DOMContentLoaded", function() {
+								createLink([course_id], [val => val.length == 9 &&
+										/^[0123456789BCDFGHJKLMNPQRSTVWXYbcdfghjklmnpqrstvwxy]+$/.test(val)
+									], document.getElementById("level_info_link"), vals =>
+									"https://tgrcode.com/mm2/level_info/" +
+									vals[0].toUpperCase());
+							});
+						})();
+					</script>
+				</div>
+			</li>
+			<li>
+				<div class="collapsible-header">
+					<i class="material-icons">article</i>
+					<span class="endpointName">/user_info/<span class="endpointItem">{maker_id}</span>
+					</span>
+				</div>
+				<div class="collapsible-body">
+					<p>Returns a JSON file describing the specified user</p>
+					<i class="material-icons importantParam">priority_high</i>&nbsp;<span class="endpointItem">{maker_id}</span>: The 9 digit code used to identify a user
+					<div class="input-field inline">
+						<input placeholder="231723D7G" id="maker_id_user_info" type="text" class="validate">
+						<label for="maker_id_user_info">Maker ID</label>
+					</div>
+					<p><a id="user_info_link" class="generatedLink"></a></p>
+
+					<script>
+						(function() {
+							var maker_id = document.getElementById("maker_id_user_info");
+
+							document.addEventListener("DOMContentLoaded", function() {
+								createLink([maker_id], [val => val.length == 9 &&
+										/^[0123456789BCDFGHJKLMNPQRSTVWXYbcdfghjklmnpqrstvwxy]+$/.test(val)
+									], document.getElementById("user_info_link"), vals =>
+									"https://tgrcode.com/mm2/user_info/" +
+									vals[0].toUpperCase());
+							});
+						})();
+					</script>
+				</div>
+			</li>
+			<li>
+				<div class="collapsible-header"><i class="material-icons">article</i>
+					<span class="endpointName">/level_info_multiple/<span class="endpointItem">{course_ids}</span>
+					</span>
+				</div>
+				<div class="collapsible-body">
+					<p>Returns a JSON file containing level info for the specified levels</p>
+					<i class="material-icons importantParam">priority_high</i>&nbsp;<span class="endpointItem">{course_ids}</span>: The 9 digit codes used to identify the courses,
+					separated by commas
+					<div class="input-field inline">
+						<input placeholder="91CMPM7LF,4BJ7H571G" id="course_ids_level_info_multiple" type="text" class="validate">
+						<label for="course_ids_level_info_multiple">Course IDs</label>
+					</div>
+					<p><a id="level_info_multiple_link" class="generatedLink"></a></p>
+
+					<script>
+						(function() {
+							var course_ids = document.getElementById("course_ids_level_info_multiple");
+
+							document.addEventListener("DOMContentLoaded", function() {
+								createLink([course_ids], [val => val.split(",").every(x =>
+										x.length == 9 && /^[0123456789BCDFGHJKLMNPQRSTVWXYbcdfghjklmnpqrstvwxy]+$/
+										.test(x))],
+									document
+									.getElementById("level_info_multiple_link"), vals =>
+									"https://tgrcode.com/mm2/level_info_multiple/" +
+									vals[0].toUpperCase());
+							});
+						})();
+					</script>
+				</div>
+			</li>
+			<li>
+				<div class="collapsible-header"><i class="material-icons">article</i>
+					<span class="endpointName">/level_comments/<span class="endpointItem">{course_id}</span>
+					</span>
+				</div>
+				<div class="collapsible-body">
+					<p>Returns the comments of the specified course</p>
+					<i class="material-icons importantParam">priority_high</i>&nbsp;<span class="endpointItem">{course_id}</span>: The 9 digit code used to identify a course
+					<div class="input-field inline">
+						<input placeholder="91CMPM7LF" id="course_id_level_comments" type="text" class="validate">
+						<label for="course_id_level_comments">Course ID</label>
+					</div>
+					<p><a id="comments_link" class="generatedLink"></a></p>
+
+					<script>
+						(function() {
+							var course_id = document.getElementById("course_id_level_comments");
+
+							document.addEventListener("DOMContentLoaded", function() {
+								createLink([course_id], [val => val.length == 9 &&
+										/^[0123456789BCDFGHJKLMNPQRSTVWXYbcdfghjklmnpqrstvwxy]+$/.test(val)
+									], document.getElementById("comments_link"), vals =>
+									"https://tgrcode.com/mm2/level_comments/" +
+									vals[0].toUpperCase());
+							});
+						})();
+					</script>
+				</div>
+			</li>
+			<li>
+				<div class="collapsible-header"><i class="material-icons">article</i>
+					<span class="endpointName">/level_played/<span class="endpointItem">{course_id}</span>
+					</span>
+				</div>
+				<div class="collapsible-body">
+					<p>Returns the users who have played on this course, along with those who have liked and cleared it</p>
+					<i class="material-icons importantParam">priority_high</i>&nbsp;<span class="endpointItem">{course_id}</span>: The 9 digit code used to identify a course
+					<div class="input-field inline">
+						<input placeholder="91CMPM7LF" id="course_id_level_played" type="text" class="validate">
+						<label for="course_id_level_played">Course ID</label>
+					</div>
+					<p><a id="played_link" class="generatedLink"></a></p>
+
+					<script>
+						(function() {
+							var course_id = document.getElementById("course_id_level_played");
+
+							document.addEventListener("DOMContentLoaded", function() {
+								createLink([course_id], [val => val.length == 9 &&
+										/^[0123456789BCDFGHJKLMNPQRSTVWXYbcdfghjklmnpqrstvwxy]+$/.test(val)
+									], document.getElementById("played_link"), vals =>
+									"https://tgrcode.com/mm2/level_played/" +
+									vals[0].toUpperCase());
+							});
+						})();
+					</script>
+				</div>
+			</li>
+			<li>
+				<div class="collapsible-header"><i class="material-icons">article</i>
+					<span class="endpointName">/level_deaths/<span class="endpointItem">{course_id}</span>
+					</span>
+				</div>
+				<div class="collapsible-body">
+					<p>Returns the death locations in a course</p>
+					<i class="material-icons importantParam">priority_high</i>&nbsp;<span class="endpointItem">{course_id}</span>: The 9 digit code used to identify a course
+					<div class="input-field inline">
+						<input placeholder="91CMPM7LF" id="course_id_level_deaths" type="text" class="validate">
+						<label for="course_id_level_deaths">Course ID</label>
+					</div>
+					<p><a id="deaths_link" class="generatedLink"></a></p>
+
+					<script>
+						(function() {
+							var course_id = document.getElementById("course_id_level_deaths");
+
+							document.addEventListener("DOMContentLoaded", function() {
+								createLink([course_id], [val => val.length == 9 &&
+										/^[0123456789BCDFGHJKLMNPQRSTVWXYbcdfghjklmnpqrstvwxy]+$/.test(val)
+									], document.getElementById("deaths_link"), vals =>
+									"https://tgrcode.com/mm2/level_deaths/" +
+									vals[0].toUpperCase());
+							});
+						})();
+					</script>
+				</div>
+			</li>
+			<li>
+				<div class="collapsible-header"><i class="material-icons">insert_photo</i>
+					<span class="endpointName">/level_thumbnail/<span class="endpointItem">{course_id}</span>
+					</span>
+				</div>
+				<div class="collapsible-body">
+					<p>Returns the small thumbnail of the specified course</p>
+					<i class="material-icons importantParam">priority_high</i>&nbsp;<span class="endpointItem">{course_id}</span>: The 9 digit code used to identify a course
+					<div class="input-field inline">
+						<input placeholder="91CMPM7LF" id="course_id_level_thumbnail" type="text" class="validate">
+						<label for="course_id_level_thumbnail">Course ID</label>
+					</div>
+					<p><a id="thumbnail_link" class="generatedLink"></a></p>
+
+					<script>
+						(function() {
+							var course_id = document.getElementById("course_id_level_thumbnail");
+
+							document.addEventListener("DOMContentLoaded", function() {
+								createLink([course_id], [val => val.length == 9 &&
+										/^[0123456789BCDFGHJKLMNPQRSTVWXYbcdfghjklmnpqrstvwxy]+$/.test(val)
+									], document.getElementById("thumbnail_link"), vals =>
+									"https://tgrcode.com/mm2/level_thumbnail/" +
+									vals[0].toUpperCase());
+							});
+						})();
+					</script>
+				</div>
+			</li>
+			<li>
+				<div class="collapsible-header"><i class="material-icons">insert_photo</i>
+					<span class="endpointName">/level_entire_thumbnail/<span class="endpointItem">{course_id}</span>
+					</span>
+				</div>
+				<div class="collapsible-body">
+					<p>Returns the entire level thumbnail of the specified course</p>
+					<i class="material-icons importantParam">priority_high</i>&nbsp;<span class="endpointItem">{course_id}</span>: The 9 digit code used to identify a course
+					<div class="input-field inline">
+						<input placeholder="91CMPM7LF" id="course_id_level_entire_thumbnail" type="text" class="validate">
+						<label for="course_id_level_entire_thumbnail">Course ID</label>
+					</div>
+					<p><a id="thumbnail_entire_link" class="generatedLink"></a></p>
+
+					<script>
+						(function() {
+							var course_id = document.getElementById("course_id_level_entire_thumbnail");
+
+							document.addEventListener("DOMContentLoaded", function() {
+								createLink([course_id], [val => val.length == 9 &&
+										/^[0123456789BCDFGHJKLMNPQRSTVWXYbcdfghjklmnpqrstvwxy]+$/.test(val)
+									], document.getElementById("thumbnail_entire_link"), vals =>
+									"https://tgrcode.com/mm2/level_entire_thumbnail/" +
+									vals[0].toUpperCase());
+							});
+						})();
+					</script>
+				</div>
+			</li>
+			<li>
+				<div class="collapsible-header"><i class="material-icons">insert_drive_file</i>
+					<span class="endpointName">/level_data/<span class="endpointItem">{course_id}</span>
+					</span>
+				</div>
+				<div class="collapsible-body">
+					<p>Returns the level data of the specified course</p>
+					<i class="material-icons importantParam">priority_high</i>&nbsp;<span class="endpointItem">{course_id}</span>: The 9 digit code used to identify a course
+					<div class="input-field inline">
+						<input placeholder="91CMPM7LF" id="course_id_level_data" type="text" class="validate">
+						<label for="course_id_level_data">Course ID</label>
+					</div>
+					<p><a id="level_data_link" class="generatedLink"></a></p>
+
+					<script>
+						(function() {
+							var course_id = document.getElementById("course_id_level_data");
+
+							document.addEventListener("DOMContentLoaded", function() {
+								createLink([course_id], [val => val.length == 9 &&
+										/^[0123456789BCDFGHJKLMNPQRSTVWXYbcdfghjklmnpqrstvwxy]+$/.test(val)
+									], document.getElementById("level_data_link"), vals =>
+									"https://tgrcode.com/mm2/level_data/" +
+									vals[0].toUpperCase());
+							});
+						})();
+					</script>
+				</div>
+			</li>
+			<li>
+				<div class="collapsible-header"><i class="material-icons">insert_drive_file</i>
+					<span class="endpointName">/level_data_dataid/<span class="endpointItem">{data_id}</span>
+					</span>
+				</div>
+				<div class="collapsible-body">
+					<p>Returns the level data of the course specified by the data ID</p>
+					<i class="material-icons importantParam">priority_high</i>&nbsp;<span class="endpointItem">{data_id}</span>: The internal data ID used to identify the level
+					<div class="input-field inline">
+						<input placeholder="3914278" id="data_id_level_data" type="text" class="validate">
+						<label for="data_id_level_data">Data ID</label>
+					</div>
+					<p><a id="level_data_link_data_id" class="generatedLink"></a></p>
+
+					<script>
+						(function() {
+							var data_id = document.getElementById("data_id_level_data");
+
+							document.addEventListener("DOMContentLoaded", function() {
+								createLink([data_id], [val =>
+										/^[0-9]+$/.test(val) && BigInt(val) > 0 && BigInt(val) < BigInt(
+											"18446744073709551616")
+									], document.getElementById("level_data_link_data_id"), vals =>
+									"https://tgrcode.com/mm2/level_data_dataid/" +
+									vals[0]);
+							});
+						})();
+					</script>
+				</div>
+			</li>
+			<li>
+				<div class="collapsible-header"><i class="material-icons">article</i>
+					<span class="endpointName">/ninji_info</span>
+					</span>
+				</div>
+				<div class="collapsible-body">
+					<p>Returns a JSON file containing info on the available ninjis</p>
+					<p><a href="https://tgrcode.com/mm2/ninji_info" class="generatedLink">https://tgrcode.com/mm2/ninji_info</a></p>
+				</div>
+			</li>
+			<li>
+				<div class="collapsible-header"><i class="material-icons">article</i>
+					<span class="endpointName">/ninji_ghosts/<span class="endpointItem">{index}</span>
+					</span>
+				</div>
+				<div class="collapsible-body">
+					<p>Returns a JSON file containing random ninji ghosts in the specified ninji course around a
+						specific time</p>
+					<i class="material-icons importantParam">priority_high</i>&nbsp;<span class="endpointItem">{index}</span>: The index of the ninji, with 0 as the most recent ninji
+					<div class="input-field inline">
+						<input placeholder="0" id="index_ninji_ghosts" type="text" class="validate">
+						<label for="index_ninji_ghosts">Index</label>
+					</div>
+					<br>
+					<span class="endpointItem">{time}</span>: The time in milliseconds you want the ghosts to be around
+					<div class="input-field inline">
+						<input placeholder="10000" id="time_ninji_ghosts" type="text" class="validate">
+						<label for="time_ninji_ghosts">Time</label>
+					</div>
+					<br>
+					<span class="endpointItem">{num}</span>: Number of ghosts you want returned
+					<div class="input-field inline">
+						<input placeholder="10" id="num_ninji_ghosts" type="text" class="validate">
+						<label for="num_ninji_ghosts">Number</label>
+					</div>
+					<p><a id="ninji_ghosts_link" class="generatedLink"></a></p>
+
+					<script>
+						(function() {
+							var index = document.getElementById("index_ninji_ghosts");
+							var time = document.getElementById("time_ninji_ghosts");
+							var num = document.getElementById("num_ninji_ghosts");
+
+							document.addEventListener("DOMContentLoaded", function() {
+								createLink([index, time, num], [val =>
+										/^[0-9]+$/.test(val) && BigInt(val) >= 0 && BigInt(val) < BigInt(50), val =>
+										/^[0-9]+$/
+										.test(val) && BigInt(val) >= 0 && BigInt(val) < BigInt(2000000), val => /^[0-9]+$/
+										.test(val) && BigInt(val) > 1 && BigInt(val) <= BigInt(100)
+									], document.getElementById("ninji_ghosts_link"), vals =>
+									"https://tgrcode.com/mm2/ninji_ghosts/" +
+									vals[0] + "?time=" + vals[1] + "&num=" + vals[2]);
+							});
+						})();
+					</script>
+				</div>
+			</li>
+			<li>
+				<div class="collapsible-header">
+					<i class="material-icons">article</i>
+					<span class="endpointName">/get_posted/<span class="endpointItem">{maker_id}</span>
+					</span>
+				</div>
+				<div class="collapsible-body">
+					<p>Returns all levels this user has posted</p>
+					<i class="material-icons importantParam">priority_high</i>&nbsp;<span class="endpointItem">{maker_id}</span>: The 9 digit code used to identify a user
+					<div class="input-field inline">
+						<input placeholder="231723D7G" id="maker_id_get_posted" type="text" class="validate">
+						<label for="maker_id_get_posted">Maker ID</label>
+					</div>
+					<p><a id="get_posted_link" class="generatedLink"></a></p>
+
+					<script>
+						(function() {
+							var maker_id = document.getElementById("maker_id_get_posted");
+
+							document.addEventListener("DOMContentLoaded", function() {
+								createLink([maker_id], [val => val.length == 9 &&
+										/^[0123456789BCDFGHJKLMNPQRSTVWXYbcdfghjklmnpqrstvwxy]+$/.test(val)
+									], document.getElementById("get_posted_link"), vals =>
+									"https://tgrcode.com/mm2/get_posted/" +
+									vals[0].toUpperCase());
+							});
+						})();
+					</script>
+				</div>
+			</li>
+			<li>
+				<div class="collapsible-header">
+					<i class="material-icons">article</i>
+					<span class="endpointName">/get_liked/<span class="endpointItem">{maker_id}</span>
+					</span>
+				</div>
+				<div class="collapsible-body">
+					<p>Returns some levels this user has liked</p>
+					<i class="material-icons importantParam">priority_high</i>&nbsp;<span class="endpointItem">{maker_id}</span>: The 9 digit code used to identify a user
+					<div class="input-field inline">
+						<input placeholder="231723D7G" id="maker_id_get_liked" type="text" class="validate">
+						<label for="maker_id_get_liked">Maker ID</label>
+					</div>
+					<p><a id="get_liked_link" class="generatedLink"></a></p>
+
+					<script>
+						(function() {
+							var maker_id = document.getElementById("maker_id_get_liked");
+
+							document.addEventListener("DOMContentLoaded", function() {
+								createLink([maker_id], [val => val.length == 9 &&
+										/^[0123456789BCDFGHJKLMNPQRSTVWXYbcdfghjklmnpqrstvwxy]+$/.test(val)
+									], document.getElementById("get_liked_link"), vals =>
+									"https://tgrcode.com/mm2/get_liked/" +
+									vals[0].toUpperCase());
+							});
+						})();
+					</script>
+				</div>
+			</li>
+			<li>
+				<div class="collapsible-header">
+					<i class="material-icons">article</i>
+					<span class="endpointName">/get_played/<span class="endpointItem">{maker_id}</span>
+					</span>
+				</div>
+				<div class="collapsible-body">
+					<p>Returns some levels this user has played</p>
+					<i class="material-icons importantParam">priority_high</i>&nbsp;<span class="endpointItem">{maker_id}</span>: The 9 digit code used to identify a user
+					<div class="input-field inline">
+						<input placeholder="231723D7G" id="maker_id_get_played" type="text" class="validate">
+						<label for="maker_id_get_played">Maker ID</label>
+					</div>
+					<p><a id="get_played_link" class="generatedLink"></a></p>
+
+					<script>
+						(function() {
+							var maker_id = document.getElementById("maker_id_get_played");
+
+							document.addEventListener("DOMContentLoaded", function() {
+								createLink([maker_id], [val => val.length == 9 &&
+										/^[0123456789BCDFGHJKLMNPQRSTVWXYbcdfghjklmnpqrstvwxy]+$/.test(val)
+									], document.getElementById("get_played_link"), vals =>
+									"https://tgrcode.com/mm2/get_played/" +
+									vals[0].toUpperCase());
+							});
+						})();
+					</script>
+				</div>
+			</li>
+			<li>
+				<div class="collapsible-header">
+					<i class="material-icons">article</i>
+					<span class="endpointName">/get_first_cleared/<span class="endpointItem">{maker_id}</span>
+					</span>
+				</div>
+				<div class="collapsible-body">
+					<p>Returns some levels this user has cleared first</p>
+					<i class="material-icons importantParam">priority_high</i>&nbsp;<span class="endpointItem">{maker_id}</span>: The 9 digit code used to identify a user
+					<div class="input-field inline">
+						<input placeholder="231723D7G" id="maker_id_get_first_cleared" type="text" class="validate">
+						<label for="maker_id_get_first_cleared">Maker ID</label>
+					</div>
+					<p><a id="get_first_cleared_link" class="generatedLink"></a></p>
+
+					<script>
+						(function() {
+							var maker_id = document.getElementById("maker_id_get_first_cleared");
+
+							document.addEventListener("DOMContentLoaded", function() {
+								createLink([maker_id], [val => val.length == 9 &&
+										/^[0123456789BCDFGHJKLMNPQRSTVWXYbcdfghjklmnpqrstvwxy]+$/.test(val)
+									], document.getElementById("get_first_cleared_link"), vals =>
+									"https://tgrcode.com/mm2/get_first_cleared/" +
+									vals[0].toUpperCase());
+							});
+						})();
+					</script>
+				</div>
+			</li>
+			<li>
+				<div class="collapsible-header">
+					<i class="material-icons">article</i>
+					<span class="endpointName">/get_world_record/<span class="endpointItem">{maker_id}</span>
+					</span>
+				</div>
+				<div class="collapsible-body">
+					<p>Returns some levels this user has world record on</p>
+					<i class="material-icons importantParam">priority_high</i>&nbsp;<span class="endpointItem">{maker_id}</span>: The 9 digit code used to identify a user
+					<div class="input-field inline">
+						<input placeholder="231723D7G" id="maker_id_get_world_record" type="text" class="validate">
+						<label for="maker_id_get_world_record">Maker ID</label>
+					</div>
+					<p><a id="get_world_record_link" class="generatedLink"></a></p>
+
+					<script>
+						(function() {
+							var maker_id = document.getElementById("maker_id_get_world_record");
+
+							document.addEventListener("DOMContentLoaded", function() {
+								createLink([maker_id], [val => val.length == 9 &&
+										/^[0123456789BCDFGHJKLMNPQRSTVWXYbcdfghjklmnpqrstvwxy]+$/.test(val)
+									], document.getElementById("get_world_record_link"), vals =>
+									"https://tgrcode.com/mm2/get_world_record/" +
+									vals[0].toUpperCase());
+							});
+						})();
+					</script>
+				</div>
+			</li>
+			<li>
+				<div class="collapsible-header"><i class="material-icons">article</i>
+					<span class="endpointName">/get_super_worlds</span>
+					</span>
+				</div>
+				<div class="collapsible-body">
+					<p>Returns a JSON file containing a few random super worlds</p>
+					<p><a href="https://tgrcode.com/mm2/get_super_worlds" class="generatedLink">https://tgrcode.com/mm2/get_super_worlds</a></p>
+				</div>
+			</li>
+			<li>
+				<div class="collapsible-header">
+					<i class="material-icons">article</i>
+					<span class="endpointName">/super_world/<span class="endpointItem">{super_world_id}</span>
+					</span>
+				</div>
+				<div class="collapsible-body">
+					<p>Returns info on the specified super world</p>
+					<i class="material-icons importantParam">priority_high</i>&nbsp;<span class="endpointItem">{super_world_id}</span>: The code used to identify a super world
+					<div class="input-field inline">
+						<input id="super_world_id_super_world" type="text">
+						<label for="super_world_id_super_world">Super World ID</label>
+					</div>
+					<p><a id="super_world_link" class="generatedLink"></a></p>
+
+					<script>
+						(function() {
+							var super_world_id = document.getElementById("super_world_id_super_world");
+
+							document.addEventListener("DOMContentLoaded", function() {
+								createLink([super_world_id], [val => true], document.getElementById("super_world_link"), vals =>
+									"https://tgrcode.com/mm2/super_world/" +
+									vals[0]);
+							});
+						})();
+					</script>
+				</div>
+			</li>
+			<li>
+				<div class="collapsible-header"><i class="material-icons">article</i>
+					<span class="endpointName">/search_endless_mode</span>
+					</span>
+				</div>
+				<div class="collapsible-body">
+					<p>Returns a JSON file containing info on random endless courses of the specified difficulty</p>
+					<span class="endpointItem">{count}</span>: Number of courses to request
+					<div class="input-field inline">
+						<input placeholder="10" id="count_search_endless_mode" type="text" class="validate">
+						<label for="count_search_endless_mode">Count</label>
+					</div>
+					<br>
+					<span class="endpointItem">{difficulty}</span>: The difficulty of the returned levels, with e for
+					easy, n for normal, ex for expert and sex for super expert
+					<div class="input-field inline">
+						<input placeholder="n" id="difficulty_search_endless_mode" type="text" class="validate">
+						<label for="difficulty_search_endless_mode">Difficulty</label>
+					</div>
+					<p><a id="search_endless_mode_link" class="generatedLink"></a></p>
+
+					<script>
+						(function() {
+							var count = document.getElementById("count_search_endless_mode");
+							var difficulty = document.getElementById("difficulty_search_endless_mode");
+
+							document.addEventListener("DOMContentLoaded", function() {
+								createLink([count, difficulty], [val =>
+										/^[0-9]+$/.test(val) && BigInt(val) > 0 && BigInt(val) <= BigInt(300), val =>
+										val ==
+										"e" || val == "n" || val == "ex" || val == "sex"
+									], document.getElementById("search_endless_mode_link"), vals =>
+									"https://tgrcode.com/mm2/search_endless_mode?count=" + vals[0] + "&difficulty=" + vals[
+										1]);
+							});
+						})();
+					</script>
+				</div>
+			</li>
+			<li>
+				<div class="collapsible-header"><i class="material-icons">article</i>
+					<span class="endpointName">/search_new</span>
+					</span>
+				</div>
+				<div class="collapsible-body">
+					<p>Returns a JSON file containing info on random new courses</p>
+					<span class="endpointItem">{count}</span>: Number of courses to request
+					<div class="input-field inline">
+						<input placeholder="10" id="count_search_new" type="text" class="validate">
+						<label for="count_search_new">Count</label>
+					</div>
+					<p><a id="search_new_link" class="generatedLink"></a></p>
+
+					<script>
+						(function() {
+							var count = document.getElementById("count_search_new");
+
+							document.addEventListener("DOMContentLoaded", function() {
+								createLink([count], [val =>
+										/^[0-9]+$/.test(val) && BigInt(val) > 0 && BigInt(val) <= BigInt(20)
+									], document.getElementById("search_new_link"), vals =>
+									"https://tgrcode.com/mm2/search_new?count=" + vals[0]);
+							});
+						})();
+					</script>
+				</div>
+			</li>
+			<li>
+				<div class="collapsible-header"><i class="material-icons">article</i>
+					<span class="endpointName">/search_popular</span>
+					</span>
+				</div>
+				<div class="collapsible-body">
+					<p>Returns a JSON file containing info on random popular courses of the specified difficulty</p>
+					<span class="endpointItem">{count}</span>: Number of courses to request
+					<div class="input-field inline">
+						<input placeholder="10" id="count_search_popular" type="text" class="validate">
+						<label for="count_search_popular">Count</label>
+					</div>
+					<br>
+					<span class="endpointItem">{difficulty}</span>: The difficulty of the returned levels, with e for
+					easy, n for normal, ex for expert and sex for super expert
+					<div class="input-field inline">
+						<input placeholder="n" id="difficulty_search_popular" type="text" class="validate">
+						<label for="difficulty_search_popular">Difficulty</label>
+					</div>
+					<br>
+					<span class="endpointItem">{rejectRegions}</span>: Regions to be excluded from the results separated
+					by commas, with j as Asia, u as Americas, e as Europe and a as Other
+					<div class="input-field inline">
+						<input id="rejectregions_search_popular" type="text" class="validate">
+						<label for="rejectregions_search_popular">Excluded Regions</label>
+					</div>
+					<p><a id="search_popular_link" class="generatedLink"></a></p>
+
+					<script>
+						(function() {
+							var count = document.getElementById("count_search_popular");
+							var difficulty = document.getElementById("difficulty_search_popular");
+							var rejectRegions = document.getElementById("rejectregions_search_popular");
+
+							document.addEventListener("DOMContentLoaded", function() {
+								createLink([count, difficulty, rejectRegions], [val =>
+										/^[0-9]+$/.test(val) && BigInt(val) > 0 && BigInt(val) <= BigInt(100), val =>
+										val ==
+										"e" || val == "n" || val == "ex" || val == "sex", val => val.split(",").every(x =>
+											x ==
+											"j" || x == "u" || x == "e" || x == "a")
+									], document.getElementById("search_popular_link"), vals =>
+									"https://tgrcode.com/mm2/search_popular?count=" + vals[0] + "&difficulty=" + vals[1] +
+									"&rejectRegions=" + vals[2]);
+							});
+						})();
+					</script>
+				</div>
+			</li>
+		</ul>
+	</div>
+
+	<script src="https://cdnjs.cloudflare.com/ajax/libs/materialize/1.0.0/js/materialize.min.js"></script>
+	<script>
+		document.addEventListener("DOMContentLoaded", function() {
+			var elems = document.querySelectorAll(".collapsible");
+			var instances = M.Collapsible.init(elems, {
+
+			});
+		});
+	</script>
+
+</body>
+
+</html>
