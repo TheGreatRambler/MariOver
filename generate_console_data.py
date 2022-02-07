@@ -15,6 +15,6 @@ with open("webserver_args.json", mode="w") as file:
 	"password": "%s",
 	"keys": "./ConsoleData/prod.keys",
 	"prodinfo": "./ConsoleData/PRODINFO.dec",
-	"ticket": "./ConsoleData/SUPER_MARIO_MAKER_2_v0_01009B90006DC000.tik"
+	"ticket": "./ConsoleData/SUPER MARIO MAKER 2 v0 (01009B90006DC000) (BASE).tik"
 }""" % (LATEST_VERSION, username, password)
 	file.write(args)
