@@ -1,0 +1,29 @@
+{
+	"configurations": [
+		{
+			"name": "Win32",
+			"includePath": [
+				"${workspaceFolder}/processing/src/**",
+				"${workspaceFolder}/processing/include/**",
+				"C:/msys64/mingw64/include/python3.9"
+			],
+			"defines": [
+				"_DEBUG",
+				"UNICODE",
+				"_UNICODE"
+			],
+			"compilerPath": "C:/msys64/mingw64/bin/gcc.exe",
+			"cStandard": "c11",
+			"cppStandard": "c++17",
+			"intelliSenseMode": "gcc-x64",
+			"compilerArgs": [],
+			"browse": {
+				"path": [
+					"${workspaceFolder}/**"
+				],
+				"limitSymbolsToIncludedHeaders": true
+			}
+		}
+	],
+	"version": 4
+}

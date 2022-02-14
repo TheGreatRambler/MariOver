@@ -7,7 +7,6 @@ import json
 import orjson
 import os
 import time
-import sqlite3
 from binascii import hexlify
 from struct import pack
 from PIL import Image
@@ -24,11 +23,9 @@ from nintendo.dauth import DAuthClient
 from nintendo.aauth import AAuthClient
 from nintendo.switch import ProdInfo, KeySet
 from nintendo.nex import backend, authentication, settings, datastore_smm2 as datastore
-from nintendo.nex.common import RMCError
 from nintendo.games import SMM2
 from anynet import http
 from enum import IntEnum
-from SMM2 import encryption
 
 import logging
 logging.basicConfig(level=logging.INFO)
@@ -914,7 +911,7 @@ def add_user_info_json(user, json_dict):
 	json_dict["pid"] = user.pid
 	json_dict["name"] = user.name
 	json_dict["country"] = user.country
-	json_dict["last_active"] = user.last_active.value()
+	json_dict["last_active"] = user.last_active.timestamp()
 	json_dict["last_active_pretty"] = str(user.last_active)
 
 	if len(user.unk2) != 0:
@@ -989,7 +986,7 @@ def add_user_info_json(user, json_dict):
 	if len(user.unk7) == 1:
 		json_dict["weekly_maker_points"] = user.unk7[0]
 
-	json_dict["last_uploaded_level"] = user.unk11.value()
+	json_dict["last_uploaded_level"] = user.unk11.timestamp()
 	json_dict["last_uploaded_level_pretty"] = str(user.unk11)
 	json_dict["is_nintendo_employee"] = user.unk10
 	json_dict["comments_enabled"] = user.unk4
@@ -1039,7 +1036,7 @@ async def add_comment_info_json(store, course_id, course_info, noCaching = False
 				if comment.unk4 == 1:
 					comment_json["text"] = comment.unk15
 				comment_json["posted_pretty"] = str(comment.unk13)
-				comment_json["posted"] = comment.unk13.value()
+				comment_json["posted"] = comment.unk13.timestamp()
 				comment_json["clear_required"] = comment.unk11
 				if comment.unk4 == 2:
 					comment_json["reaction_image_id"] = comment.unk16
@@ -1064,8 +1061,6 @@ async def add_comment_info_json(store, course_id, course_info, noCaching = False
 					comment_image = {}
 					comment_image["url"] = comment.picture.url
 					comment_image["size"] = comment.picture.unk1
-					# Appears to always be blank, useless to me
-					#comment_image["unk2"] = hexlify(comment.picture.unk2).decode()
 					comment_image["filename"] = comment.picture.filename
 					comment_json["custom_comment_image"] = comment_image
 
@@ -1122,7 +1117,7 @@ async def get_world_maps_json(store):
 		map_json["planet_type"] = map.unk2
 		map_json["planet_type_name"] = SuperWorldPlanetType[map.unk2]
 		map_json["created_pretty"] = str(map.unk3)
-		map_json["created"] = map.unk3.value()
+		map_json["created"] = map.unk3.timestamp()
 
 		map_json["unk5"] = map.unk5
 		map_json["unk6"] = map.unk6
@@ -1181,7 +1176,7 @@ async def search_world_map(store, ids, noCaching = False, save = True):
 		map_json["planet_type"] = map.unk2
 		map_json["planet_type_name"] = SuperWorldPlanetType[map.unk2]
 		map_json["created_pretty"] = str(map.unk3)
-		map_json["created"] = map.unk3.value()
+		map_json["created"] = map.unk3.timestamp()
 
 		map_json["ninjis"] = []
 		for element in map.unk4:
@@ -1232,12 +1227,10 @@ async def add_played_info_json(store, course_id, noCaching = False, save = True)
 
 	data_id = course_id_to_dataid(course_id)
 
-	count = 1000
-
 	param = datastore.SearchUsersPlayedCourseParam()
 	param.data_id = data_id
 	param.option = datastore.UserOption.ALL
-	param.count = count
+	param.count = 1000
 	players = await store.search_users_played_course(param)
 
 	for player in players:
@@ -1248,13 +1241,13 @@ async def add_played_info_json(store, course_id, noCaching = False, save = True)
 	if len(players) != 0:
 		param = datastore.SearchUsersClearedCourseParam()
 		param.data_id = data_id
-		param.count = count
+		param.count = 1000
 		clearing_players = await store.search_users_cleared_course(param)
 		played_info["cleared"] = [user.pid for user in clearing_players]
 
 		param = datastore.SearchUsersPositiveRatedCourseParam()
 		param.data_id = data_id
-		param.count = count
+		param.count = 1000
 		liking_players = await store.search_users_positive_rated_course(param)
 		played_info["liked"] = [user.pid for user in liking_players]
 
@@ -1425,7 +1418,7 @@ async def get_course_info_json(request_type, request_param, store, noCaching = F
 			course_info["name"] = course.name
 			course_info["description"] = course.description
 			course_info["uploaded_pretty"] = str(course.upload_time)
-			course_info["uploaded"] = course.upload_time.value()
+			course_info["uploaded"] = course.upload_time.timestamp()
 			course_info["data_id"] = course.data_id
 			course_info["course_id"] = course.code
 			course_info["game_style_name"] = GameStyles[course.game_style]
@@ -1482,21 +1475,15 @@ async def get_course_info_json(request_type, request_param, store, noCaching = F
 			entire_thumbnail["filename"] = course.entire_thumbnail.filename
 			course_info["entire_thumbnail"] = entire_thumbnail
 
-			# Corresponds to whether there is a clear condition, but this is redundant
-			#course_info["unk1"] = course.unk1
 			course_info["unk2"] = course.unk2
 			if debug_enabled and not save:
 				course_info["unk3"] = course.unk3
 			else:
 				course_info["unk3"] = hexlify(course.unk3).decode()
-			# Seems to always be 1
 			course_info["unk9"] = course.unk9
 			course_info["unk10"] = course.unk10
 			course_info["unk11"] = course.unk11
 			course_info["unk12"] = course.unk12
-
-			#with open(course.code + "test.bin", mode="wb+") as f:
-			#	f.write(course.unk3)
 
 			if pathlib.Path("cache/level_info/%s" % course.code).exists():
 				cache_hits += 1
@@ -1627,6 +1614,15 @@ async def obtain_ninji_info(store):
 		course_info_json["courses"][i]["theme"] = course.course_theme
 		course_info_json["courses"][i]["end_time"] = str(course.end_time)
 		course_info_json["courses"][i]["data_id"] = course.data_id
+		course_info_json["courses"][i]["clear_condition"] = course.unk7
+		course_info_json["courses"][i]["clear_condition_magnitude"] = course.unk8
+		course_info_json["courses"][i]["medal_time"] = course.medal_time
+		course_info_json["courses"][i]["unk3_0"] = course.unk3[0]
+		course_info_json["courses"][i]["unk3_1"] = course.unk3[1]
+		course_info_json["courses"][i]["unk3_2"] = course.unk3[2]
+		course_info_json["courses"][i]["unk5"] = course.unk5
+		course_info_json["courses"][i]["unk6"] = course.unk6
+		course_info_json["courses"][i]["unk9"] = course.unk9
 
 		i = i + 1
 
@@ -1719,8 +1715,8 @@ async def obtain_ninji_ghosts(ninji_data_id, time, num, include_replay_files, sh
 	return ninji_ghosts_json
 
 
-HOST = None
-PORT = None
+HOST = "g%08x-lp1.s.n.srv.nintendo.net" % SMM2.GAME_SERVER_ID
+PORT = 443
 s = None
 user_id = None
 auth_info = None
@@ -1749,12 +1745,10 @@ async def check_tokens():
 	# Either has never been generated or is older than 23.9 hours
 	if device_token_generated_time is None or (milliseconds_since_epoch() - device_token_generated_time) > 85340000:
 		async with lock:
-			print("Lock obtained")
 			cert = info.get_tls_cert()
 			pkey = info.get_tls_key()
 
 			print("Generate device token")
-			# Request a dauth token
 			dauth = DAuthClient(keys)
 			dauth.set_certificate(cert, pkey)
 			dauth.set_system_version(SYSTEM_VERSION)
@@ -1763,7 +1757,6 @@ async def check_tokens():
 			print("Generated device token")
 
 			print("Generate app token")
-			# Request a aauth token
 			aauth = AAuthClient()
 			aauth.set_system_version(SYSTEM_VERSION)
 			response = await aauth.auth_digital(
@@ -1777,7 +1770,6 @@ async def check_tokens():
 
 			id_token = None
 			print("Generate id token")
-			# Log in on baas server
 			baas = BAASClient()
 			baas.set_system_version(SYSTEM_VERSION)
 			response = await baas.authenticate(device_token)
@@ -1789,10 +1781,9 @@ async def check_tokens():
 
 			id_token_generated_time = milliseconds_since_epoch()
 
-			# Log in on game server
 			auth_info = authentication.AuthenticationInfo()
 			auth_info.token = id_token
-			auth_info.ngs_version = 4 #Switch
+			auth_info.ngs_version = 4
 			auth_info.token_type = 2
 
 			print("Loading settings")
@@ -1802,9 +1793,7 @@ async def check_tokens():
 	# Either has never been generated or is older than 2.9 hours
 	if id_token_generated_time is None or (milliseconds_since_epoch() - id_token_generated_time) > 1044000:
 		async with lock:
-			id_token = None
 			print("Generate id token")
-			# Log in on baas server
 			baas = BAASClient()
 			baas.set_system_version(SYSTEM_VERSION)
 			response = await baas.authenticate(device_token)
@@ -1816,10 +1805,9 @@ async def check_tokens():
 
 			id_token_generated_time = milliseconds_since_epoch()
 
-			# Log in on game server
 			auth_info = authentication.AuthenticationInfo()
 			auth_info.token = id_token
-			auth_info.ngs_version = 4 #Switch
+			auth_info.ngs_version = 4
 			auth_info.token_type = 2
 
 			print("Loading settings")
@@ -1829,13 +1817,8 @@ async def check_tokens():
 
 
 async def main():
-	global HOST
-	global PORT
-	HOST = "g%08x-lp1.s.n.srv.nintendo.net" % SMM2.GAME_SERVER_ID
-	PORT = 443
-
 	print("Running API setup")
-	await asyncio.wait_for(check_tokens(), 10)
+	await check_tokens()
 
 class AsyncLoopThread(Thread):
 	def __init__(self):
@@ -1872,7 +1855,7 @@ async def read_level_info(course_id: str, noCaching: bool = False):
 
 		return ORJSONResponse(content=course_info_json)
 	else:
-		await asyncio.wait_for(check_tokens(), 10)
+		await check_tokens()
 		async with lock:
 			async with backend.connect(s, HOST, PORT) as be:
 				async with be.login(str(user_id), auth_info=auth_info) as client:
@@ -1896,7 +1879,7 @@ async def read_user_info(maker_id: str, noCaching: bool = False):
 
 		return ORJSONResponse(content=user_info_json)
 	else:
-		await asyncio.wait_for(check_tokens(), 10)
+		await check_tokens()
 		async with lock:
 			async with backend.connect(s, HOST, PORT) as be:
 				async with be.login(str(user_id), auth_info=auth_info) as client:
@@ -1923,7 +1906,7 @@ async def read_level_infos(course_ids: str):
 	if len(corrected_course_ids) > 300:
 		return ORJSONResponse(status_code=400, content={"error": "Number of courses requested must be between 1 and 300"})
 
-	await asyncio.wait_for(check_tokens(), 10)
+	await check_tokens()
 	async with lock:
 		async with backend.connect(s, HOST, PORT) as be:
 			async with be.login(str(user_id), auth_info=auth_info) as client:
@@ -1955,7 +1938,7 @@ async def read_level_comments(course_id: str, noCaching: bool = False):
 			return ORJSONResponse(status_code=400, content=comments)
 		return ORJSONResponse(content=comments)
 	else:
-		await asyncio.wait_for(check_tokens(), 10)
+		await check_tokens()
 		async with lock:
 			async with backend.connect(s, HOST, PORT) as be:
 				async with be.login(str(user_id), auth_info=auth_info) as client:
@@ -1987,7 +1970,7 @@ async def read_level_played(course_id: str, noCaching: bool = False):
 			return ORJSONResponse(status_code=400, content=played)
 		return ORJSONResponse(content=played)
 	else:
-		await asyncio.wait_for(check_tokens(), 10)
+		await check_tokens()
 		async with lock:
 			async with backend.connect(s, HOST, PORT) as be:
 				async with be.login(str(user_id), auth_info=auth_info) as client:
@@ -2019,7 +2002,7 @@ async def read_level_deaths(course_id: str, noCaching: bool = False):
 			return ORJSONResponse(status_code=400, content=deaths)
 		return ORJSONResponse(content=deaths)
 	else:
-		await asyncio.wait_for(check_tokens(), 10)
+		await check_tokens()
 		async with lock:
 			async with backend.connect(s, HOST, PORT) as be:
 				async with be.login(str(user_id), auth_info=auth_info) as client:
@@ -2060,7 +2043,7 @@ async def read_level_thumbnail(course_id: str):
 	if in_cache(course_id) and await download_thumbnail(None, course_info_json["one_screen_thumbnail"]["url"], path, ServerDataTypes.level_thumbnail):
 		return FileResponse(path=path, media_type="image/jpg")
 	else:
-		await asyncio.wait_for(check_tokens(), 10)
+		await check_tokens()
 		async with lock:
 			async with backend.connect(s, HOST, PORT) as be:
 				async with be.login(str(user_id), auth_info=auth_info) as client:
@@ -2100,7 +2083,7 @@ async def read_entire_level_thumbnail(course_id: str):
 	if in_cache(course_id) and await download_thumbnail(None, course_info_json["entire_thumbnail"]["url"], path, ServerDataTypes.entire_level_thumbnail):
 		return FileResponse(path=path, media_type="image/jpg")
 	else:
-		await asyncio.wait_for(check_tokens(), 10)
+		await check_tokens()
 		async with lock:
 			async with backend.connect(s, HOST, PORT) as be:
 				async with be.login(str(user_id), auth_info=auth_info) as client:
@@ -2143,7 +2126,7 @@ async def read_level_data(course_id: str):
 			if invalid_level(orjson.loads(zlib_decompressed)):
 				return Response(status_code=400, content=zlib_decompressed, media_type="application/json")
 
-	await asyncio.wait_for(check_tokens(), 10)
+	await check_tokens()
 	async with lock:
 		async with backend.connect(s, HOST, PORT) as be:
 			async with be.login(str(user_id), auth_info=auth_info) as client:
@@ -2184,7 +2167,7 @@ async def read_level_data_dataid(dataid: int):
 		else:
 			return FileResponse(path=loc, media_type="application/octet-stream")
 
-	await asyncio.wait_for(check_tokens(), 10)
+	await check_tokens()
 	async with lock:
 		async with backend.connect(s, HOST, PORT) as be:
 			async with be.login(str(user_id), auth_info=auth_info) as client:
@@ -2204,7 +2187,7 @@ async def read_level_data_dataid(dataid: int):
 
 @app.get("/ninji_info")
 async def ninji_info():
-	await asyncio.wait_for(check_tokens(), 10)
+	await check_tokens()
 	async with lock:
 		async with backend.connect(s, HOST, PORT) as be:
 			async with be.login(str(user_id), auth_info=auth_info) as client:
@@ -2221,7 +2204,7 @@ async def ninji_ghosts(index: int, time: int = 10000, num: int = 10, includeRepl
 		return ORJSONResponse(status_code=400, content={"error": "Ninji index must be between 0 and 20"})
 	ninji_course_info = None
 
-	await asyncio.wait_for(check_tokens(), 10)
+	await check_tokens()
 	async with lock:
 		async with backend.connect(s, HOST, PORT) as be:
 			async with be.login(str(user_id), auth_info=auth_info) as client:
@@ -2252,7 +2235,7 @@ async def search_posted(maker_id: str):
 		if invalid_level(user_info_json):
 			return ORJSONResponse(status_code=400, content=user_info_json)
 
-	await asyncio.wait_for(check_tokens(), 10)
+	await check_tokens()
 	async with lock:
 		async with backend.connect(s, HOST, PORT) as be:
 			async with be.login(str(user_id), auth_info=auth_info) as client:
@@ -2278,7 +2261,7 @@ async def search_liked(maker_id: str):
 		if invalid_level(user_info_json):
 			return ORJSONResponse(status_code=400, content=user_info_json)
 
-	await asyncio.wait_for(check_tokens(), 10)
+	await check_tokens()
 	async with lock:
 		async with backend.connect(s, HOST, PORT) as be:
 			async with be.login(str(user_id), auth_info=auth_info) as client:
@@ -2304,7 +2287,7 @@ async def search_played(maker_id: str):
 		if invalid_level(user_info_json):
 			return ORJSONResponse(status_code=400, content=user_info_json)
 
-	await asyncio.wait_for(check_tokens(), 10)
+	await check_tokens()
 	async with lock:
 		async with backend.connect(s, HOST, PORT) as be:
 			async with be.login(str(user_id), auth_info=auth_info) as client:
@@ -2330,7 +2313,7 @@ async def search_first_cleared(maker_id: str):
 		if invalid_level(user_info_json):
 			return ORJSONResponse(status_code=400, content=user_info_json)
 
-	await asyncio.wait_for(check_tokens(), 10)
+	await check_tokens()
 	async with lock:
 		async with backend.connect(s, HOST, PORT) as be:
 			async with be.login(str(user_id), auth_info=auth_info) as client:
@@ -2356,7 +2339,7 @@ async def search_world_record(maker_id: str):
 		if invalid_level(user_info_json):
 			return ORJSONResponse(status_code=400, content=user_info_json)
 
-	await asyncio.wait_for(check_tokens(), 10)
+	await check_tokens()
 	async with lock:
 		async with backend.connect(s, HOST, PORT) as be:
 			async with be.login(str(user_id), auth_info=auth_info) as client:
@@ -2374,7 +2357,7 @@ async def search_world_record(maker_id: str):
 
 @app.get("/get_super_worlds")
 async def get_world_maps():
-	await asyncio.wait_for(check_tokens(), 10)
+	await check_tokens()
 	async with lock:
 		async with backend.connect(s, HOST, PORT) as be:
 			async with be.login(str(user_id), auth_info=auth_info) as client:
@@ -2398,7 +2381,7 @@ async def get_world_maps(map_id: str, noCaching: bool = False):
 			return ORJSONResponse(status_code=400, content=world_map)
 		return ORJSONResponse(content=world_map)
 	else:
-		await asyncio.wait_for(check_tokens(), 10)
+		await check_tokens()
 		async with lock:
 			async with backend.connect(s, HOST, PORT) as be:
 				async with be.login(str(user_id), auth_info=auth_info) as client:
@@ -2418,7 +2401,7 @@ async def search_endless_mode(count: int = 10, difficulty: str = "n"):
 		return ORJSONResponse(status_code=400, content={"error": "Difficulty %s is an invalid difficulty" % difficulty})
 	if count < 1 or count > 300:
 		return ORJSONResponse(status_code=400, content={"error": "Count %d is an invalid count, must be between 1 and 300" % count})
-	await asyncio.wait_for(check_tokens(), 10)
+	await check_tokens()
 	async with lock:
 		async with backend.connect(s, HOST, PORT) as be:
 			async with be.login(str(user_id), auth_info=auth_info) as client:
@@ -2435,7 +2418,7 @@ async def search_endless_mode(count: int = 10, difficulty: str = "n"):
 async def search_new(count: int = 10):
 	if count < 1 or count > 20:
 		return ORJSONResponse(status_code=400, content={"error": "Count %d is an invalid count, must be between 1 and 20" % count})
-	await asyncio.wait_for(check_tokens(), 10)
+	await check_tokens()
 	async with lock:
 		async with backend.connect(s, HOST, PORT) as be:
 			async with be.login(str(user_id), auth_info=auth_info) as client:
@@ -2456,7 +2439,7 @@ async def search_popular(count: int = 10, difficulty: str = "n", rejectRegions: 
 	if count < 1 or count > 100:
 		return ORJSONResponse(status_code=400, content={"error": "Count %d is an invalid count, must be between 1 and 100" % count})
 	reject_regions_list = region_string_to_list(rejectRegions)
-	await asyncio.wait_for(check_tokens(), 10)
+	await check_tokens()
 	async with lock:
 		async with backend.connect(s, HOST, PORT) as be:
 			async with be.login(str(user_id), auth_info=auth_info) as client:
@@ -2468,745 +2451,6 @@ async def search_popular(count: int = 10, difficulty: str = "n", rejectRegions: 
 					return ORJSONResponse(status_code=400, content=courses_info_json)
 
 				return ORJSONResponse(content=courses_info_json)
-
-# Only for personal use in gatherMassiveData.py
-cached_players = set()
-@app.get("/scraping")
-async def scraping(dataIds: str = "0"):
-	if not debug_enabled:
-		# Only I am allowed to use this endpoint bwahaha
-		return ORJSONResponse(status_code=400, content={"error": "Wat"})
-	data_ids = list(int(x) for x in dataIds.split(","))
-	await asyncio.wait_for(check_tokens(), 10)
-	courses_info_json = None
-	async with backend.connect(s, HOST, PORT) as be:
-		async with be.login(str(user_id), auth_info=auth_info) as client:
-			store = datastore.DataStoreClientSMM2(client)
-			print("Want %d courses, %s" % (len(data_ids), dataIds))
-			param = datastore.GetCoursesParam()
-			param.data_ids = data_ids
-			param.option = datastore.CourseOption.ALL
-			courses_info_json = await get_course_info_json(CourseRequestType.data_ids_no_stop, param, store, True, False)
-	con = sqlite3.connect("dump.db")
-	cur = con.cursor()
-	cur.execute("""CREATE TABLE IF NOT EXISTS level (
-		data_id INTEGER,
-		name TEXT,
-		description TEXT,
-		uploaded INTEGER,
-		course_id TEXT,
-		gamestyle INTEGER,
-		theme INTEGER,
-		difficulty INTEGER,
-		tag1 INTEGER,
-		tag2 INTEGER,
-		world_record INTEGER,
-		upload_time INTEGER,
-		num_comments INTEGER,
-		clear_condition INTEGER,
-		clear_condition_magnitude INTEGER,
-		clears INTEGER,
-		attempts INTEGER,
-		clear_rate REAL,
-		plays INTEGER,
-		versus_matches INTEGER,
-		coop_matches INTEGER,
-		likes INTEGER,
-		boos INTEGER,
-		unique_players_and_versus INTEGER,
-		weekly_likes INTEGER,
-		weekly_plays INTEGER,
-		one_screen_thumbnail BLOB,
-		one_screen_thumbnail_url TEXT,
-		one_screen_thumbnail_size INTEGER,
-		one_screen_thumbnail_filename TEXT,
-		entire_thumbnail BLOB,
-		entire_thumbnail_url TEXT,
-		entire_thumbnail_size INTEGER,
-		entire_thumbnail_filename TEXT,
-		uploader_pid TEXT,
-		first_completer_pid TEXT,
-		record_holder_pid TEXT,
-		level_data BLOB,
-		unk2 INTEGER,
-		unk3 BLOB,
-		unk9 INTEGER,
-		unk10 INTEGER,
-		unk11 INTEGER,
-		unk12 INTEGER
-	)""")
-	cur.execute("""CREATE TABLE IF NOT EXISTS user (
-		pid TEXT,
-		data_id INTEGER,
-		code TEXT,
-		region INTEGER,
-		name TEXT,
-		country TEXT,
-		last_active INTEGER,
-		mii_data BLOB,
-		mii_image TEXT,
-		mii_studio_code TEXT,
-		pose INTEGER,
-		hat INTEGER,
-		shirt INTEGER,
-		pants INTEGER,
-		wearing_outfit INTEGER,
-		courses_played INTEGER,
-		courses_cleared INTEGER,
-		courses_attempted INTEGER,
-		courses_deaths INTEGER,
-		likes INTEGER,
-		maker_points INTEGER,
-		easy_highscore INTEGER,
-		normal_highscore INTEGER,
-		expert_highscore INTEGER,
-		super_expert_highscore INTEGER,
-		versus_rating INTEGER,
-		versus_rank INTEGER,
-		versus_won INTEGER,
-		versus_lost INTEGER,
-		versus_win_streak INTEGER,
-		versus_lose_streak INTEGER,
-		versus_plays INTEGER,
-		versus_disconnected INTEGER,
-		coop_clears INTEGER,
-		coop_plays INTEGER,
-		recent_performance INTEGER,
-		versus_kills INTEGER,
-		versus_killed_by_others INTEGER,
-		multiplayer_unk13 INTEGER,
-		multiplayer_unk14 INTEGER,
-		first_clears INTEGER,
-		world_records INTEGER,
-		unique_super_world_clears INTEGER,
-		uploaded_levels INTEGER,
-		maximum_uploaded_levels INTEGER,
-		weekly_maker_points INTEGER,
-		last_uploaded_level INTEGER,
-		is_nintendo_employee INTEGER,
-		comments_enabled INTEGER,
-		tags_enabled INTEGER,
-		super_world_id TEXT,
-		unk3 INTEGER,
-		unk12 INTEGER,
-		unk16 INTEGER
-	)""")
-	cur.execute("""CREATE TABLE IF NOT EXISTS user_badges (
-		pid TEXT,
-		type INTEGER,
-		rank INTEGER
-	)""")
-	cur.execute("""CREATE TABLE IF NOT EXISTS level_comments (
-		data_id INTEGER,
-		comment_id TEXT,
-		type INTEGER,
-		pid TEXT,
-		posted INTEGER,
-		clear_required INTEGER,
-		text TEXT,
-		reaction_image_id INTEGER,
-		custom_image BLOB,
-		custom_image_url TEXT,
-		custom_image_size INTEGER,
-		custom_image_filename TEXT,
-		has_beaten INTEGER,
-		x INTEGER,
-		y INTEGER,
-		reaction_face INTEGER,
-		unk8 INTEGER,
-		unk10 INTEGER,
-		unk12 INTEGER,
-		unk14 BLOB,
-		unk17 INTEGER
-	)""")
-	cur.execute("""CREATE TABLE IF NOT EXISTS level_played (
-		data_id INTEGER,
-		pid TEXT,
-		cleared INTEGER,
-		liked INTEGER
-	)""")
-	cur.execute("""CREATE TABLE IF NOT EXISTS level_deaths (
-		data_id INTEGER,
-		x INTEGER,
-		y INTEGER,
-		is_subworld INTEGER
-	)""")
-	
-	global cached_players
-	if len(cached_players) == 0:
-		# Cache players from database
-		i = 0
-		pids = con.execute("SELECT pid FROM user")
-		for pid in pids:
-			fixed_pid = int(pid[0])
-			if fixed_pid in cached_players:
-				print("Duplicate PID %s" % pid[0])
-			else:
-				cached_players.add(fixed_pid)
-			i += 1
-			if i % 10000 == 0:
-				print("Added %d players so far" % i)
-
-	async def handle_info(course_info, store):
-		param = datastore.DataStorePrepareGetParam()
-		param.data_id = course_info["data_id"]
-		req_info = await store.prepare_get_object(param)
-		response = await http.get(req_info.url)
-		response.raise_if_error()
-		Course = encryption.Course()
-		Course.load(response.body)
-		Course.decrypt()
-		course_info["data"] = zlib.compress(Course.data)
-		try:
-			course_info["one_screen_thumbnail_data"] = await download_thumbnail(store, course_info["one_screen_thumbnail"]["url"], None, ServerDataTypes.level_thumbnail, False)
-		except:
-			# Certain one screen thumbnails, one recorded case, return a 403
-			course_info["one_screen_thumbnail_data"] = b""
-		try:
-			course_info["entire_thumbnail_data"] = await download_thumbnail(store, course_info["entire_thumbnail"]["url"], None, ServerDataTypes.entire_level_thumbnail, False)
-		except:
-			# Certain entire level thumbnails, one recorded case, return a 403
-			course_info["entire_thumbnail_data"] = b""
-		course_info["played_info"] = await add_played_info_json(store, course_info["course_id"], False, False)
-		course_info["death_info"] = (await add_death_positions_json(store, course_info["course_id"], False, False))["deaths"]
-		if course_info["num_comments"] != 0:
-			try:
-				course_info["comments"] = (await add_comment_info_json(store, course_info["course_id"], course_info, False, False))["comments"]
-			except RMCError:
-				print("Level (%s) with disabled comments attempted, continue" % course_info["course_id"])
-
-	# Need incredibly beefy internet and PC to handle 3 to 4 websockets at once, as each needs to be refreshed occassionally
-	# Also consumes terabytes of bandwidth over time
-	async with backend.connect(s, HOST, PORT) as be:
-		async with be.login(str(user_id), auth_info=auth_info) as client1:
-			async with be.login(str(user_id), auth_info=auth_info) as client2:
-				async with be.login(str(user_id), auth_info=auth_info) as client3:
-					store1 = datastore.DataStoreClientSMM2(client1)
-					store2 = datastore.DataStoreClientSMM2(client2)
-					store3 = datastore.DataStoreClientSMM2(client3)
-					await ServerHeaders.level_thumbnail.refresh(store1)
-					await ServerHeaders.entire_level_thumbnail.refresh(store1)
-					tasks = []
-					for i in range(0, len(courses_info_json["courses"]), 3):
-						chunk = courses_info_json["courses"][i:i + 3]
-						tasks.append(handle_info(chunk[0], store1))
-						if len(chunk) > 1:
-							tasks.append(handle_info(chunk[1], store2))
-						if len(chunk) > 2:
-							tasks.append(handle_info(chunk[2], store3))
-					await asyncio.gather(*tasks)
-
-	await asyncio.wait_for(check_tokens(), 10)
-
-	# Add complete level info
-	database_entries = []
-	for course in courses_info_json["courses"]:
-		database_entries.append((
-			course["data_id"],
-			course["name"],
-			course["description"],
-			course["uploaded"],
-			course["course_id"],
-			course["game_style"],
-			course["theme"],
-			course["difficulty"],
-			course["tags"][0],
-			course["tags"][1],
-			course.get("world_record", -1),
-			course["upload_time"],
-			course["num_comments"],
-			course["clear_condition"],
-			course["clear_condition_magnitude"],
-			course["clears"],
-			course["attempts"],
-			course["clear_rate"],
-			course["plays"],
-			course["versus_matches"],
-			course["coop_matches"],
-			course["likes"],
-			course["boos"],
-			course["unique_players_and_versus"],
-			course["weekly_likes"],
-			course["weekly_plays"],
-			course.get("one_screen_thumbnail_data", b""),
-			course["one_screen_thumbnail"]["url"],
-			course["one_screen_thumbnail"]["size"],
-			course["one_screen_thumbnail"]["filename"],
-			course.get("entire_thumbnail_data", b""),
-			course["entire_thumbnail"]["url"],
-			course["entire_thumbnail"]["size"],
-			course["entire_thumbnail"]["filename"],
-			str(course["uploader_pid"]),
-			str(course.get("first_completer_pid", -1)),
-			str(course.get("record_holder_pid", -1)),
-			course.get("data", b""),
-			course["unk2"],
-			course["unk3"],
-			course["unk9"],
-			course["unk10"],
-			course["unk11"],
-			course["unk12"],
-		))
-	cur.executemany("INSERT INTO level VALUES (" + ",".join(["?"] * 44) + ")", database_entries)
-
-	user_database_entries = []
-	badge_database_entries = []
-
-	pids_to_check = set()
-	for course in courses_info_json["courses"]:
-		for player in course["played_info"]["players"]:
-			pids_to_check.add(str(player["pid"]))
-
-	if len(pids_to_check) != 0:
-		pids_to_check_list = list(pids_to_check)
-		for pid in pids_to_check_list:
-			if int(pid) in cached_players:
-				pids_to_check.remove(pid)
-
-		# These ones have already been downloaded, more efficent
-		for course in courses_info_json["courses"]:
-			for player in course["played_info"]["players"]:
-				pid = str(player["pid"])
-				if pid in pids_to_check:
-					cached_players.add(player["pid"])
-					user_database_entries.append((
-						str(player["pid"]),
-						course_id_to_dataid(player["code"]),
-						player["code"],
-						player["region"],
-						player["name"],
-						player["country"],
-						player["last_active"],
-						player["mii_data"],
-						player["mii_image"],
-						player["mii_studio_code"],
-						player["pose"],
-						player["hat"],
-						player["shirt"],
-						player["pants"],
-						int(player["wearing_outfit"]),
-						player["courses_played"],
-						player["courses_cleared"],
-						player["courses_attempted"],
-						player["courses_deaths"],
-						player["likes"],
-						player["maker_points"],
-						player["easy_highscore"],
-						player["normal_highscore"],
-						player["expert_highscore"],
-						player["super_expert_highscore"],
-						player["versus_rating"],
-						player["versus_rank"],
-						player["versus_won"],
-						player["versus_lost"],
-						player["versus_win_streak"],
-						player["versus_lose_streak"],
-						player["versus_plays"],
-						player["versus_disconnected"],
-						player["coop_clears"],
-						player["coop_plays"],
-						player["recent_performance"],
-						player["versus_kills"],
-						player["versus_killed_by_others"],
-						player["multiplayer_stats_unk13"],
-						player["multiplayer_stats_unk14"],
-						player["first_clears"],
-						player["world_records"],
-						player["unique_super_world_clears"],
-						player["uploaded_levels"],
-						player["maximum_uploaded_levels"],
-						player["weekly_maker_points"],
-						player["last_uploaded_level"],
-						int(player["is_nintendo_employee"]),
-						int(player["comments_enabled"]),
-						int(player["tags_enabled"]),
-						player["super_world_id"],
-						int(player["unk3"]),
-						int(player["unk12"]),
-						int(player["unk16"]),
-					))
-					for badge in player["badges"]:
-						badge_database_entries.append((
-							str(player["pid"]),
-							badge["type"],
-							badge["rank"],
-						))
-					pids_to_check.remove(pid)
-
-	# Add all other users, which may need to be downloaded
-	player_pids = set()
-	for course in courses_info_json["courses"]:
-		player_pids.add(str(course["uploader_pid"]))
-		if "first_completer_pid" in course:
-			player_pids.add(str(course["first_completer_pid"]))
-		if "record_holder_pid" in course:
-			player_pids.add(str(course["record_holder_pid"]))
-		for comment in course.get("comments", []):
-			player_pids.add(str(comment["commenter_pid"]))
-		# Just in case, some users might be here that are not in played
-		for clear in course["played_info"].get("cleared", []):
-			player_pids.add(str(clear))
-		for like in course["played_info"].get("liked", []):
-			player_pids.add(str(like))
-
-	player_pids_list = list(player_pids)
-	for pid in player_pids_list:
-		if int(pid) in cached_players:
-			player_pids.remove(pid)
-
-	if len(player_pids) != 0:
-		fixed_player_pids = list(map(int, player_pids))
-		async def process_users(users_partial, store):
-			param = datastore.GetUsersParam()
-			param.pids = users_partial
-			param.option = datastore.UserOption.ALL
-			response = await store.get_users(param)
-			i = 0
-			for user in response.users:
-				if users_partial[i] != 0:
-					player_json = {}
-					add_user_info_json(user, player_json)
-					cached_players.add(player_json["pid"])
-					user_database_entries.append((
-						str(player_json["pid"]),
-						course_id_to_dataid(player_json["code"]),
-						player_json["code"],
-						player_json["region"],
-						player_json["name"],
-						player_json["country"],
-						player_json["last_active"],
-						player_json["mii_data"],
-						player_json["mii_image"],
-						player_json["mii_studio_code"],
-						player_json["pose"],
-						player_json["hat"],
-						player_json["shirt"],
-						player_json["pants"],
-						int(player_json["wearing_outfit"]),
-						player_json["courses_played"],
-						player_json["courses_cleared"],
-						player_json["courses_attempted"],
-						player_json["courses_deaths"],
-						player_json["likes"],
-						player_json["maker_points"],
-						player_json["easy_highscore"],
-						player_json["normal_highscore"],
-						player_json["expert_highscore"],
-						player_json["super_expert_highscore"],
-						player_json["versus_rating"],
-						player_json["versus_rank"],
-						player_json["versus_won"],
-						player_json["versus_lost"],
-						player_json["versus_win_streak"],
-						player_json["versus_lose_streak"],
-						player_json["versus_plays"],
-						player_json["versus_disconnected"],
-						player_json["coop_clears"],
-						player_json["coop_plays"],
-						player_json["recent_performance"],
-						player_json["versus_kills"],
-						player_json["versus_killed_by_others"],
-						player_json["multiplayer_stats_unk13"],
-						player_json["multiplayer_stats_unk14"],
-						player_json["first_clears"],
-						player_json["world_records"],
-						player_json["unique_super_world_clears"],
-						player_json["uploaded_levels"],
-						player_json["maximum_uploaded_levels"],
-						player_json["weekly_maker_points"],
-						player_json["last_uploaded_level"],
-						int(player_json["is_nintendo_employee"]),
-						int(player_json["comments_enabled"]),
-						int(player_json["tags_enabled"]),
-						player_json["super_world_id"],
-						int(player_json["unk3"]),
-						int(player_json["unk12"]),
-						int(player_json["unk16"]),
-					))
-					for badge in player_json["badges"]:
-						badge_database_entries.append((
-							str(player_json["pid"]),
-							badge["type"],
-							badge["rank"],
-						))
-				i += 1
-
-		users_partial_chunks = [fixed_player_pids[j:j+500] for j in range(len(fixed_player_pids))[::500]]
-		async with backend.connect(s, HOST, PORT) as be:
-			async with be.login(str(user_id), auth_info=auth_info) as client:
-				store = datastore.DataStoreClientSMM2(client)
-				for users_partial in users_partial_chunks:
-					await process_users(users_partial, store)
-
-	await asyncio.wait_for(check_tokens(), 10)
-
-	if len(user_database_entries) != 0:
-		cur.executemany("INSERT INTO user VALUES (" + ",".join(["?"] * 54) + ")", user_database_entries)
-	if len(badge_database_entries) != 0:
-		cur.executemany("INSERT INTO user_badges VALUES (?,?,?)", badge_database_entries)
-
-	played_database_entries = []
-	deaths_database_entries = []
-	for course in courses_info_json["courses"]:
-		players_played = course["played_info"]["players"]
-		players_cleared = set(course["played_info"].get("cleared", []))
-		players_liked = set(course["played_info"].get("liked", []))
-		added = set()
-		for player in players_played:
-			played_database_entries.append((
-				course["data_id"],
-				str(player["pid"]),
-				int(player["pid"] in players_cleared),
-				int(player["pid"] in players_liked),
-			))
-			added.add(player["pid"])
-		for pid in players_cleared:
-			if pid not in added:
-				played_database_entries.append((
-					course["data_id"],
-					str(pid),
-					1,
-					int(pid in players_liked),
-				))
-				added.add(pid)
-		for pid in players_liked:
-			if pid not in added:
-				played_database_entries.append((
-					course["data_id"],
-					str(pid),
-					int(pid in players_cleared),
-					1,
-				))
-				added.add(pid)
-		for death in course["death_info"]:
-			deaths_database_entries.append((
-				course["data_id"],
-				death["x"],
-				death["y"],
-				int(death["is_subworld"]),
-			))
-
-	if len(played_database_entries) != 0:
-		cur.executemany("INSERT INTO level_played VALUES (?,?,?,?)", played_database_entries)
-	if len(deaths_database_entries) != 0:
-		cur.executemany("INSERT INTO level_deaths VALUES (?,?,?,?)", deaths_database_entries)
-
-	comments = []
-	for course in courses_info_json["courses"]:
-		for comment in course.get("comments", []):
-			comment["level_data_id"] = course["data_id"]
-			comments.append(comment)
-
-	database_entries = []
-	async def handle_comments(comment):
-		comment_image = b""
-		comment_image_url = ""
-		comment_image_size = 0
-		comment_image_filename = ""
-		if "custom_comment_image" in comment:
-			comment_image_url = comment["custom_comment_image"]["url"]
-			comment_image_size = comment["custom_comment_image"]["size"]
-			comment_image_filename = comment["custom_comment_image"]["filename"]
-			try:
-				image_data = await ServerHeaders.custom_comment_image.request_url(comment_image_url, None)
-				image = Image.frombuffer("RGBA", (320, 180), zlib.decompress(image_data), "raw", "RGBA", 0, 1)
-				image_bytes = io.BytesIO()
-				image.save(image_bytes, format="png")
-				comment_image = image_bytes.getvalue()
-			except:
-				# Rarely fails, only 1 recorded so far
-				print("Failure to download comment image")
-				comment_image = b""
-		database_entries.append((
-			comment["level_data_id"],
-			comment["comment_id"],
-			comment["type"],
-			str(comment["commenter_pid"]),
-			comment["posted"],
-			int(comment["clear_required"]),
-			comment.get("text", ""),
-			comment.get("reaction_image_id", -1),
-			comment_image,
-			comment_image_url,
-			comment_image_size,
-			comment_image_filename,
-			int(comment["has_beaten"]),
-			comment["x"],
-			comment["y"],
-			comment["reaction_face"],
-			comment["unk8"],
-			comment["unk10"],
-			int(comment["unk12"]),
-			comment["unk14"],
-			comment["unk17"],
-		))
-	async with backend.connect(s, HOST, PORT) as be:
-		async with be.login(str(user_id), auth_info=auth_info) as client:
-			store = datastore.DataStoreClientSMM2(client)
-			await ServerHeaders.custom_comment_image.refresh(store)
-	tasks_no_images = [handle_comments(c) for c in comments if not "custom_comment_image" in c]
-	await asyncio.gather(*tasks_no_images)
-	# Because of windows socket limit, need to be careful with this
-	tasks_images = [handle_comments(c) for c in comments if "custom_comment_image" in c]
-	for tasks_partial in [tasks_images[i:i+200] for i in range(len(tasks_images))[::200]]:
-		await asyncio.gather(*tasks_partial)
-
-	if len(database_entries) != 0:
-		cur.executemany("INSERT INTO level_comments VALUES (" + ",".join(["?"] * 21) + ")", database_entries)
-
-	con.commit()
-	con.close()
-
-	uploaded = ""
-	if len(courses_info_json["courses"]) != 0:
-		uploaded = courses_info_json["courses"][0]["uploaded_pretty"]
-	return ORJSONResponse(content={"num_courses": len(courses_info_json["courses"]), "uploaded": uploaded})
-
-# Run after first scraper, downloads all remaining users
-@app.get("/scraping2")
-async def scraping2(pids: str = "0"):
-	if not debug_enabled:
-		# Only I am allowed to use this endpoint bwahaha
-		return ORJSONResponse(status_code=400, content={"error": "Wat"})
-	player_ids = list(int(x) for x in pids.split(","))
-
-# Run after second scraper, gets extra info for each player
-@app.get("/scraping3")
-async def scraping2(pids: str = "0"):
-	if not debug_enabled:
-		# Only I am allowed to use this endpoint bwahaha
-		return ORJSONResponse(status_code=400, content={"error": "Wat"})
-	player_ids = list(int(x) for x in pids.split(","))
-	await asyncio.wait_for(check_tokens(), 10)
-	con = sqlite3.connect("dump.db")
-	cur = con.cursor()
-	cur.execute("""CREATE TABLE IF NOT EXISTS world (
-		pid TEXT,
-		world_id TEXT,
-		worlds INTEGER,
-		levels INTEGER,
-		planet_type INTEGER,
-		created INTEGER,
-		unk5 INTEGER,
-		unk6 INTEGER,
-		unk7 INTEGER,
-		thumbnail BLOB,
-		thumbnail_url TEXT,
-		thumbnail_size INTEGER,
-		thumbnail_filename TEXT
-	)""")
-	cur.execute("""CREATE TABLE IF NOT EXISTS world_levels (
-		pid TEXT,
-		data_id INTEGER,
-		ninjis INTEGER
-	)""")
-	cur.execute("""CREATE TABLE IF NOT EXISTS user_posted (
-		pid TEXT,
-		data_id INTEGER
-	)""")
-	cur.execute("""CREATE TABLE IF NOT EXISTS user_liked (
-		pid TEXT,
-		data_id INTEGER
-	)""")
-	cur.execute("""CREATE TABLE IF NOT EXISTS user_played (
-		pid TEXT,
-		data_id INTEGER
-	)""")
-	cur.execute("""CREATE TABLE IF NOT EXISTS user_first_cleared (
-		pid TEXT,
-		data_id INTEGER
-	)""")
-	cur.execute("""CREATE TABLE IF NOT EXISTS user_world_record (
-		pid TEXT,
-		data_id INTEGER
-	)""")
-
-	user_posted_database_entries = []
-	user_liked_database_entries = []
-	user_played_database_entries = []
-	user_first_cleared_database_entries = []
-	user_world_record_database_entries = []
-
-	async def handle_player(pid, store):
-		posted = (await add_death_positions_json(store, course_info["course_id"], True, False))["deaths"]
-
-	async with backend.connect(s, HOST, PORT) as be:
-		async with be.login(str(user_id), auth_info=auth_info) as client1:
-			async with be.login(str(user_id), auth_info=auth_info) as client2:
-				async with be.login(str(user_id), auth_info=auth_info) as client3:
-					async with be.login(str(user_id), auth_info=auth_info) as client4:
-						store1 = datastore.DataStoreClientSMM2(client1)
-						store2 = datastore.DataStoreClientSMM2(client2)
-						store3 = datastore.DataStoreClientSMM2(client3)
-						store4 = datastore.DataStoreClientSMM2(client4)
-						tasks = []
-						for i in range(0, len(player_ids), 4):
-							chunk = player_ids[i:i + 4]
-							tasks.append(handle_player(chunk[0], store1))
-							if len(chunk) > 1:
-								tasks.append(handle_player(chunk[1], store2))
-							if len(chunk) > 2:
-								tasks.append(handle_player(chunk[2], store3))
-							if len(chunk) > 3:
-								tasks.append(handle_player(chunk[3], store4))
-						await asyncio.gather(*tasks)
-
-	worlds = []
-	world_database_entries = []
-	world_levels_database_entries = []
-
-	vals = con.execute("SELECT pid,super_world_id FROM user WHERE pid IN (%s)" % pids)
-	for val in vals:
-		if val[1]:
-			# Has a super world
-			worlds.append((int(val[0]), val[1]))
-
-	async def handle_super_world(info):
-		body = await ServerHeaders.world_map_thumbnails.request_url(info["thumbnail"]["url"], None)
-		image = Image.open(io.BytesIO(body))
-		image_bytes = io.BytesIO()
-		image.save(image_bytes, optimize=True, quality=95, format="jpeg")
-		info["thumbnail_data"] = image_bytes.getvalue()
-
-	async with backend.connect(s, HOST, PORT) as be:
-		async with be.login(str(user_id), auth_info=auth_info) as client:
-			store = datastore.DataStoreClientSMM2(client)
-			await ServerHeaders.world_map_thumbnails.refresh(store)
-			for chunk in [worlds[i:i+500] for i in range(len(worlds))[::500]]:
-				super_worlds = (await search_world_map(store, [i[1] for i in chunk], True, False))["super_worlds"]
-				tasks = [handle_super_world(info) for info in super_worlds]
-				await asyncio.gather(*tasks)
-				i = 0
-				for world in super_worlds:
-					pid = chunk[i][0]
-					world_database_entries.append((
-						str(pid),
-						world["id"],
-						world["worlds"],
-						world["levels"],
-						world["planet_type"],
-						world["created"],
-						world["unk5"],
-						world["unk6"],
-						world["unk7"],
-						world["thumbnail_data"],
-						world["thumbnail"]["url"],
-						world["thumbnail"]["size"],
-						world["thumbnail"]["filename"]
-					))
-					j = 0
-					for level in world["courses"]:
-						world_levels_database_entries.append((
-							str(pid),
-							level,
-							world["ninjis"][j]
-						))
-						j += 1
-					i += 1
-	
-	con.commit()
-	con.close()
-	return ORJSONResponse(content={})
 
 loop_handler = AsyncLoopThread()
 loop_handler.start()
