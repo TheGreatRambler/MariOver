@@ -1064,8 +1064,6 @@ async def add_comment_info_json(store, course_id, course_info, noCaching = False
 					comment_image = {}
 					comment_image["url"] = comment.picture.url
 					comment_image["size"] = comment.picture.unk1
-					# Appears to always be blank, useless to me
-					#comment_image["unk2"] = hexlify(comment.picture.unk2).decode()
 					comment_image["filename"] = comment.picture.filename
 					comment_json["custom_comment_image"] = comment_image
 
@@ -1232,12 +1230,10 @@ async def add_played_info_json(store, course_id, noCaching = False, save = True)
 
 	data_id = course_id_to_dataid(course_id)
 
-	count = 1000
-
 	param = datastore.SearchUsersPlayedCourseParam()
 	param.data_id = data_id
 	param.option = datastore.UserOption.ALL
-	param.count = count
+	param.count = 1000
 	players = await store.search_users_played_course(param)
 
 	for player in players:
@@ -1248,13 +1244,13 @@ async def add_played_info_json(store, course_id, noCaching = False, save = True)
 	if len(players) != 0:
 		param = datastore.SearchUsersClearedCourseParam()
 		param.data_id = data_id
-		param.count = count
+		param.count = 1000
 		clearing_players = await store.search_users_cleared_course(param)
 		played_info["cleared"] = [user.pid for user in clearing_players]
 
 		param = datastore.SearchUsersPositiveRatedCourseParam()
 		param.data_id = data_id
-		param.count = count
+		param.count = 1000
 		liking_players = await store.search_users_positive_rated_course(param)
 		played_info["liked"] = [user.pid for user in liking_players]
 
@@ -1482,21 +1478,15 @@ async def get_course_info_json(request_type, request_param, store, noCaching = F
 			entire_thumbnail["filename"] = course.entire_thumbnail.filename
 			course_info["entire_thumbnail"] = entire_thumbnail
 
-			# Corresponds to whether there is a clear condition, but this is redundant
-			#course_info["unk1"] = course.unk1
 			course_info["unk2"] = course.unk2
 			if debug_enabled and not save:
 				course_info["unk3"] = course.unk3
 			else:
 				course_info["unk3"] = hexlify(course.unk3).decode()
-			# Seems to always be 1
 			course_info["unk9"] = course.unk9
 			course_info["unk10"] = course.unk10
 			course_info["unk11"] = course.unk11
 			course_info["unk12"] = course.unk12
-
-			#with open(course.code + "test.bin", mode="wb+") as f:
-			#	f.write(course.unk3)
 
 			if pathlib.Path("cache/level_info/%s" % course.code).exists():
 				cache_hits += 1
@@ -1627,6 +1617,15 @@ async def obtain_ninji_info(store):
 		course_info_json["courses"][i]["theme"] = course.course_theme
 		course_info_json["courses"][i]["end_time"] = str(course.end_time)
 		course_info_json["courses"][i]["data_id"] = course.data_id
+		course_info_json["courses"][i]["clear_condition"] = course.unk7
+		course_info_json["courses"][i]["clear_condition_magnitude"] = course.unk8
+		course_info_json["courses"][i]["medal_time"] = course.medal_time
+		course_info_json["courses"][i]["unk3_0"] = course.unk3[0]
+		course_info_json["courses"][i]["unk3_1"] = course.unk3[1]
+		course_info_json["courses"][i]["unk3_2"] = course.unk3[2]
+		course_info_json["courses"][i]["unk5"] = course.unk5
+		course_info_json["courses"][i]["unk6"] = course.unk6
+		course_info_json["courses"][i]["unk9"] = course.unk9
 
 		i = i + 1
 
@@ -1719,8 +1718,8 @@ async def obtain_ninji_ghosts(ninji_data_id, time, num, include_replay_files, sh
 	return ninji_ghosts_json
 
 
-HOST = None
-PORT = None
+HOST = "g%08x-lp1.s.n.srv.nintendo.net" % SMM2.GAME_SERVER_ID
+PORT = 443
 s = None
 user_id = None
 auth_info = None
@@ -1749,12 +1748,10 @@ async def check_tokens():
 	# Either has never been generated or is older than 23.9 hours
 	if device_token_generated_time is None or (milliseconds_since_epoch() - device_token_generated_time) > 85340000:
 		async with lock:
-			print("Lock obtained")
 			cert = info.get_tls_cert()
 			pkey = info.get_tls_key()
 
 			print("Generate device token")
-			# Request a dauth token
 			dauth = DAuthClient(keys)
 			dauth.set_certificate(cert, pkey)
 			dauth.set_system_version(SYSTEM_VERSION)
@@ -1763,7 +1760,6 @@ async def check_tokens():
 			print("Generated device token")
 
 			print("Generate app token")
-			# Request a aauth token
 			aauth = AAuthClient()
 			aauth.set_system_version(SYSTEM_VERSION)
 			response = await aauth.auth_digital(
@@ -1777,7 +1773,6 @@ async def check_tokens():
 
 			id_token = None
 			print("Generate id token")
-			# Log in on baas server
 			baas = BAASClient()
 			baas.set_system_version(SYSTEM_VERSION)
 			response = await baas.authenticate(device_token)
@@ -1789,10 +1784,9 @@ async def check_tokens():
 
 			id_token_generated_time = milliseconds_since_epoch()
 
-			# Log in on game server
 			auth_info = authentication.AuthenticationInfo()
 			auth_info.token = id_token
-			auth_info.ngs_version = 4 #Switch
+			auth_info.ngs_version = 4
 			auth_info.token_type = 2
 
 			print("Loading settings")
@@ -1802,9 +1796,7 @@ async def check_tokens():
 	# Either has never been generated or is older than 2.9 hours
 	if id_token_generated_time is None or (milliseconds_since_epoch() - id_token_generated_time) > 1044000:
 		async with lock:
-			id_token = None
 			print("Generate id token")
-			# Log in on baas server
 			baas = BAASClient()
 			baas.set_system_version(SYSTEM_VERSION)
 			response = await baas.authenticate(device_token)
@@ -1816,10 +1808,9 @@ async def check_tokens():
 
 			id_token_generated_time = milliseconds_since_epoch()
 
-			# Log in on game server
 			auth_info = authentication.AuthenticationInfo()
 			auth_info.token = id_token
-			auth_info.ngs_version = 4 #Switch
+			auth_info.ngs_version = 4
 			auth_info.token_type = 2
 
 			print("Loading settings")
@@ -1829,13 +1820,8 @@ async def check_tokens():
 
 
 async def main():
-	global HOST
-	global PORT
-	HOST = "g%08x-lp1.s.n.srv.nintendo.net" % SMM2.GAME_SERVER_ID
-	PORT = 443
-
 	print("Running API setup")
-	await asyncio.wait_for(check_tokens(), 10)
+	await check_tokens()
 
 class AsyncLoopThread(Thread):
 	def __init__(self):
@@ -1872,7 +1858,7 @@ async def read_level_info(course_id: str, noCaching: bool = False):
 
 		return ORJSONResponse(content=course_info_json)
 	else:
-		await asyncio.wait_for(check_tokens(), 10)
+		await check_tokens()
 		async with lock:
 			async with backend.connect(s, HOST, PORT) as be:
 				async with be.login(str(user_id), auth_info=auth_info) as client:
@@ -1896,7 +1882,7 @@ async def read_user_info(maker_id: str, noCaching: bool = False):
 
 		return ORJSONResponse(content=user_info_json)
 	else:
-		await asyncio.wait_for(check_tokens(), 10)
+		await check_tokens()
 		async with lock:
 			async with backend.connect(s, HOST, PORT) as be:
 				async with be.login(str(user_id), auth_info=auth_info) as client:
@@ -1923,7 +1909,7 @@ async def read_level_infos(course_ids: str):
 	if len(corrected_course_ids) > 300:
 		return ORJSONResponse(status_code=400, content={"error": "Number of courses requested must be between 1 and 300"})
 
-	await asyncio.wait_for(check_tokens(), 10)
+	await check_tokens()
 	async with lock:
 		async with backend.connect(s, HOST, PORT) as be:
 			async with be.login(str(user_id), auth_info=auth_info) as client:
@@ -1955,7 +1941,7 @@ async def read_level_comments(course_id: str, noCaching: bool = False):
 			return ORJSONResponse(status_code=400, content=comments)
 		return ORJSONResponse(content=comments)
 	else:
-		await asyncio.wait_for(check_tokens(), 10)
+		await check_tokens()
 		async with lock:
 			async with backend.connect(s, HOST, PORT) as be:
 				async with be.login(str(user_id), auth_info=auth_info) as client:
@@ -1987,7 +1973,7 @@ async def read_level_played(course_id: str, noCaching: bool = False):
 			return ORJSONResponse(status_code=400, content=played)
 		return ORJSONResponse(content=played)
 	else:
-		await asyncio.wait_for(check_tokens(), 10)
+		await check_tokens()
 		async with lock:
 			async with backend.connect(s, HOST, PORT) as be:
 				async with be.login(str(user_id), auth_info=auth_info) as client:
@@ -2019,7 +2005,7 @@ async def read_level_deaths(course_id: str, noCaching: bool = False):
 			return ORJSONResponse(status_code=400, content=deaths)
 		return ORJSONResponse(content=deaths)
 	else:
-		await asyncio.wait_for(check_tokens(), 10)
+		await check_tokens()
 		async with lock:
 			async with backend.connect(s, HOST, PORT) as be:
 				async with be.login(str(user_id), auth_info=auth_info) as client:
@@ -2060,7 +2046,7 @@ async def read_level_thumbnail(course_id: str):
 	if in_cache(course_id) and await download_thumbnail(None, course_info_json["one_screen_thumbnail"]["url"], path, ServerDataTypes.level_thumbnail):
 		return FileResponse(path=path, media_type="image/jpg")
 	else:
-		await asyncio.wait_for(check_tokens(), 10)
+		await check_tokens()
 		async with lock:
 			async with backend.connect(s, HOST, PORT) as be:
 				async with be.login(str(user_id), auth_info=auth_info) as client:
@@ -2100,7 +2086,7 @@ async def read_entire_level_thumbnail(course_id: str):
 	if in_cache(course_id) and await download_thumbnail(None, course_info_json["entire_thumbnail"]["url"], path, ServerDataTypes.entire_level_thumbnail):
 		return FileResponse(path=path, media_type="image/jpg")
 	else:
-		await asyncio.wait_for(check_tokens(), 10)
+		await check_tokens()
 		async with lock:
 			async with backend.connect(s, HOST, PORT) as be:
 				async with be.login(str(user_id), auth_info=auth_info) as client:
@@ -2143,7 +2129,7 @@ async def read_level_data(course_id: str):
 			if invalid_level(orjson.loads(zlib_decompressed)):
 				return Response(status_code=400, content=zlib_decompressed, media_type="application/json")
 
-	await asyncio.wait_for(check_tokens(), 10)
+	await check_tokens()
 	async with lock:
 		async with backend.connect(s, HOST, PORT) as be:
 			async with be.login(str(user_id), auth_info=auth_info) as client:
@@ -2184,7 +2170,7 @@ async def read_level_data_dataid(dataid: int):
 		else:
 			return FileResponse(path=loc, media_type="application/octet-stream")
 
-	await asyncio.wait_for(check_tokens(), 10)
+	await check_tokens()
 	async with lock:
 		async with backend.connect(s, HOST, PORT) as be:
 			async with be.login(str(user_id), auth_info=auth_info) as client:
@@ -2204,7 +2190,7 @@ async def read_level_data_dataid(dataid: int):
 
 @app.get("/ninji_info")
 async def ninji_info():
-	await asyncio.wait_for(check_tokens(), 10)
+	await check_tokens()
 	async with lock:
 		async with backend.connect(s, HOST, PORT) as be:
 			async with be.login(str(user_id), auth_info=auth_info) as client:
@@ -2221,7 +2207,7 @@ async def ninji_ghosts(index: int, time: int = 10000, num: int = 10, includeRepl
 		return ORJSONResponse(status_code=400, content={"error": "Ninji index must be between 0 and 20"})
 	ninji_course_info = None
 
-	await asyncio.wait_for(check_tokens(), 10)
+	await check_tokens()
 	async with lock:
 		async with backend.connect(s, HOST, PORT) as be:
 			async with be.login(str(user_id), auth_info=auth_info) as client:
@@ -2252,7 +2238,7 @@ async def search_posted(maker_id: str):
 		if invalid_level(user_info_json):
 			return ORJSONResponse(status_code=400, content=user_info_json)
 
-	await asyncio.wait_for(check_tokens(), 10)
+	await check_tokens()
 	async with lock:
 		async with backend.connect(s, HOST, PORT) as be:
 			async with be.login(str(user_id), auth_info=auth_info) as client:
@@ -2278,7 +2264,7 @@ async def search_liked(maker_id: str):
 		if invalid_level(user_info_json):
 			return ORJSONResponse(status_code=400, content=user_info_json)
 
-	await asyncio.wait_for(check_tokens(), 10)
+	await check_tokens()
 	async with lock:
 		async with backend.connect(s, HOST, PORT) as be:
 			async with be.login(str(user_id), auth_info=auth_info) as client:
@@ -2304,7 +2290,7 @@ async def search_played(maker_id: str):
 		if invalid_level(user_info_json):
 			return ORJSONResponse(status_code=400, content=user_info_json)
 
-	await asyncio.wait_for(check_tokens(), 10)
+	await check_tokens()
 	async with lock:
 		async with backend.connect(s, HOST, PORT) as be:
 			async with be.login(str(user_id), auth_info=auth_info) as client:
@@ -2330,7 +2316,7 @@ async def search_first_cleared(maker_id: str):
 		if invalid_level(user_info_json):
 			return ORJSONResponse(status_code=400, content=user_info_json)
 
-	await asyncio.wait_for(check_tokens(), 10)
+	await check_tokens()
 	async with lock:
 		async with backend.connect(s, HOST, PORT) as be:
 			async with be.login(str(user_id), auth_info=auth_info) as client:
@@ -2356,7 +2342,7 @@ async def search_world_record(maker_id: str):
 		if invalid_level(user_info_json):
 			return ORJSONResponse(status_code=400, content=user_info_json)
 
-	await asyncio.wait_for(check_tokens(), 10)
+	await check_tokens()
 	async with lock:
 		async with backend.connect(s, HOST, PORT) as be:
 			async with be.login(str(user_id), auth_info=auth_info) as client:
@@ -2374,7 +2360,7 @@ async def search_world_record(maker_id: str):
 
 @app.get("/get_super_worlds")
 async def get_world_maps():
-	await asyncio.wait_for(check_tokens(), 10)
+	await check_tokens()
 	async with lock:
 		async with backend.connect(s, HOST, PORT) as be:
 			async with be.login(str(user_id), auth_info=auth_info) as client:
@@ -2398,7 +2384,7 @@ async def get_world_maps(map_id: str, noCaching: bool = False):
 			return ORJSONResponse(status_code=400, content=world_map)
 		return ORJSONResponse(content=world_map)
 	else:
-		await asyncio.wait_for(check_tokens(), 10)
+		await check_tokens()
 		async with lock:
 			async with backend.connect(s, HOST, PORT) as be:
 				async with be.login(str(user_id), auth_info=auth_info) as client:
@@ -2418,7 +2404,7 @@ async def search_endless_mode(count: int = 10, difficulty: str = "n"):
 		return ORJSONResponse(status_code=400, content={"error": "Difficulty %s is an invalid difficulty" % difficulty})
 	if count < 1 or count > 300:
 		return ORJSONResponse(status_code=400, content={"error": "Count %d is an invalid count, must be between 1 and 300" % count})
-	await asyncio.wait_for(check_tokens(), 10)
+	await check_tokens()
 	async with lock:
 		async with backend.connect(s, HOST, PORT) as be:
 			async with be.login(str(user_id), auth_info=auth_info) as client:
@@ -2435,7 +2421,7 @@ async def search_endless_mode(count: int = 10, difficulty: str = "n"):
 async def search_new(count: int = 10):
 	if count < 1 or count > 20:
 		return ORJSONResponse(status_code=400, content={"error": "Count %d is an invalid count, must be between 1 and 20" % count})
-	await asyncio.wait_for(check_tokens(), 10)
+	await check_tokens()
 	async with lock:
 		async with backend.connect(s, HOST, PORT) as be:
 			async with be.login(str(user_id), auth_info=auth_info) as client:
@@ -2456,7 +2442,7 @@ async def search_popular(count: int = 10, difficulty: str = "n", rejectRegions: 
 	if count < 1 or count > 100:
 		return ORJSONResponse(status_code=400, content={"error": "Count %d is an invalid count, must be between 1 and 100" % count})
 	reject_regions_list = region_string_to_list(rejectRegions)
-	await asyncio.wait_for(check_tokens(), 10)
+	await check_tokens()
 	async with lock:
 		async with backend.connect(s, HOST, PORT) as be:
 			async with be.login(str(user_id), auth_info=auth_info) as client:
@@ -2469,15 +2455,14 @@ async def search_popular(count: int = 10, difficulty: str = "n", rejectRegions: 
 
 				return ORJSONResponse(content=courses_info_json)
 
-# Only for personal use in gatherMassiveData.py
+# Used for scraping
 cached_players = set()
 @app.get("/scraping")
 async def scraping(dataIds: str = "0"):
 	if not debug_enabled:
-		# Only I am allowed to use this endpoint bwahaha
 		return ORJSONResponse(status_code=400, content={"error": "Wat"})
 	data_ids = list(int(x) for x in dataIds.split(","))
-	await asyncio.wait_for(check_tokens(), 10)
+	await check_tokens()
 	courses_info_json = None
 	async with backend.connect(s, HOST, PORT) as be:
 		async with be.login(str(user_id), auth_info=auth_info) as client:
@@ -2696,7 +2681,7 @@ async def scraping(dataIds: str = "0"):
 							tasks.append(handle_info(chunk[2], store3))
 					await asyncio.gather(*tasks)
 
-	await asyncio.wait_for(check_tokens(), 10)
+	await check_tokens()
 
 	# Add complete level info
 	database_entries = []
@@ -2938,7 +2923,7 @@ async def scraping(dataIds: str = "0"):
 				for users_partial in users_partial_chunks:
 					await process_users(users_partial, store)
 
-	await asyncio.wait_for(check_tokens(), 10)
+	await check_tokens()
 
 	if len(user_database_entries) != 0:
 		cur.executemany("INSERT INTO user VALUES (" + ",".join(["?"] * 54) + ")", user_database_entries)
@@ -3062,24 +3047,129 @@ async def scraping(dataIds: str = "0"):
 		uploaded = courses_info_json["courses"][0]["uploaded_pretty"]
 	return ORJSONResponse(content={"num_courses": len(courses_info_json["courses"]), "uploaded": uploaded})
 
-# Run after first scraper, downloads all remaining users
 @app.get("/scraping2")
-async def scraping2(pids: str = "0"):
+async def scraping2(ids: str = ""):
 	if not debug_enabled:
-		# Only I am allowed to use this endpoint bwahaha
 		return ORJSONResponse(status_code=400, content={"error": "Wat"})
-	player_ids = list(int(x) for x in pids.split(","))
-
-# Run after second scraper, gets extra info for each player
-@app.get("/scraping3")
-async def scraping2(pids: str = "0"):
-	if not debug_enabled:
-		# Only I am allowed to use this endpoint bwahaha
-		return ORJSONResponse(status_code=400, content={"error": "Wat"})
-	player_ids = list(int(x) for x in pids.split(","))
-	await asyncio.wait_for(check_tokens(), 10)
 	con = sqlite3.connect("dump.db")
 	cur = con.cursor()
+
+	user_database_entries = []
+	badge_database_entries = []
+
+	async def process_user(maker_id, store):
+		param = datastore.GetUserOrCourseParam()
+		param.code = maker_id
+		param.user_option = datastore.UserOption.ALL
+		try:
+			response = await store.get_user_or_course(param)
+			if response.user.pid != 0:
+				user = response.user
+				player_json = {}
+				add_user_info_json(user, player_json)
+				print(player_json["name"])
+				user_database_entries.append((
+					str(player_json["pid"]),
+					course_id_to_dataid(player_json["code"]),
+					player_json["code"],
+					player_json["region"],
+					player_json["name"],
+					player_json["country"],
+					player_json["last_active"],
+					player_json["mii_data"],
+					player_json["mii_image"],
+					player_json["mii_studio_code"],
+					player_json["pose"],
+					player_json["hat"],
+					player_json["shirt"],
+					player_json["pants"],
+					int(player_json["wearing_outfit"]),
+					player_json["courses_played"],
+					player_json["courses_cleared"],
+					player_json["courses_attempted"],
+					player_json["courses_deaths"],
+					player_json["likes"],
+					player_json["maker_points"],
+					player_json["easy_highscore"],
+					player_json["normal_highscore"],
+					player_json["expert_highscore"],
+					player_json["super_expert_highscore"],
+					player_json["versus_rating"],
+					player_json["versus_rank"],
+					player_json["versus_won"],
+					player_json["versus_lost"],
+					player_json["versus_win_streak"],
+					player_json["versus_lose_streak"],
+					player_json["versus_plays"],
+					player_json["versus_disconnected"],
+					player_json["coop_clears"],
+					player_json["coop_plays"],
+					player_json["recent_performance"],
+					player_json["versus_kills"],
+					player_json["versus_killed_by_others"],
+					player_json["multiplayer_stats_unk13"],
+					player_json["multiplayer_stats_unk14"],
+					player_json["first_clears"],
+					player_json["world_records"],
+					player_json["unique_super_world_clears"],
+					player_json["uploaded_levels"],
+					player_json["maximum_uploaded_levels"],
+					player_json["weekly_maker_points"],
+					player_json["last_uploaded_level"],
+					int(player_json["is_nintendo_employee"]),
+					int(player_json["comments_enabled"]),
+					int(player_json["tags_enabled"]),
+					player_json["super_world_id"],
+					int(player_json["unk3"]),
+					int(player_json["unk12"]),
+					int(player_json["unk16"]),
+				))
+				for badge in player_json["badges"]:
+					badge_database_entries.append((
+						str(player_json["pid"]),
+						badge["type"],
+						badge["rank"],
+					))
+		except:
+			None
+
+	await check_tokens()
+
+	async with backend.connect(s, HOST, PORT) as be:
+		async with be.login(str(user_id), auth_info=auth_info) as client1:
+			async with be.login(str(user_id), auth_info=auth_info) as client2:
+				async with be.login(str(user_id), auth_info=auth_info) as client3:
+					store1 = datastore.DataStoreClientSMM2(client1)
+					store2 = datastore.DataStoreClientSMM2(client2)
+					store3 = datastore.DataStoreClientSMM2(client3)
+					users_to_request = ids.split(",")
+					tasks = []
+					for i in range(0, len(users_to_request), 3):
+						chunk = users_to_request[i:i + 3]
+						tasks.append(process_user(chunk[0], store1))
+						if len(chunk) > 1:
+							tasks.append(process_user(chunk[1], store2))
+						if len(chunk) > 2:
+							tasks.append(process_user(chunk[2], store3))
+					await asyncio.gather(*tasks)
+
+	if len(user_database_entries) != 0:
+		cur.executemany("INSERT INTO user VALUES (" + ",".join(["?"] * 54) + ")", user_database_entries)
+	if len(badge_database_entries) != 0:
+		cur.executemany("INSERT INTO user_badges VALUES (?,?,?)", badge_database_entries)
+
+	con.commit()
+	con.close()
+
+	return ORJSONResponse(content={})
+
+@app.get("/scraping3")
+async def scraping3():
+	if not debug_enabled:
+		return ORJSONResponse(status_code=400, content={"error": "Wat"})
+	con = sqlite3.connect("dump.db")
+	cur = con.cursor()
+	
 	cur.execute("""CREATE TABLE IF NOT EXISTS world (
 		pid TEXT,
 		world_id TEXT,
@@ -3087,6 +3177,7 @@ async def scraping2(pids: str = "0"):
 		levels INTEGER,
 		planet_type INTEGER,
 		created INTEGER,
+		unk1 BLOB,
 		unk5 INTEGER,
 		unk6 INTEGER,
 		unk7 INTEGER,
@@ -3100,6 +3191,94 @@ async def scraping2(pids: str = "0"):
 		data_id INTEGER,
 		ninjis INTEGER
 	)""")
+
+	existing_worlds = set()
+	vals = con.execute("SELECT world_id FROM world")
+	for val in vals:
+		existing_worlds.add(val[0])
+
+	worlds = []
+	vals = con.execute("SELECT pid,super_world_id FROM user")
+	for val in vals:
+		if len(val[1]) != 0 and not val[1] in existing_worlds:
+			worlds.append((int(val[0]), val[1]))
+
+	print("Worlds length: %d" % len(worlds))
+
+	async def handle_super_world(info):
+		try:
+			body = await ServerHeaders.world_map_thumbnails.request_url(info["thumbnail"]["url"], None)
+			image = Image.open(io.BytesIO(body))
+			image_bytes = io.BytesIO()
+			image.save(image_bytes, optimize=True, quality=95, format="jpeg")
+			info["thumbnail_data"] = image_bytes.getvalue()
+		except:
+			info["thumbnail_data"] = b""
+
+	async with backend.connect(s, HOST, PORT) as be:
+		async with be.login(str(user_id), auth_info=auth_info) as client:
+			store = datastore.DataStoreClientSMM2(client)
+			for chunk in [worlds[i:i+50] for i in range(len(worlds))[::50]]:
+				super_worlds = (await search_world_map(store, [i[1] for i in chunk], True, False))["super_worlds"]
+				await ServerHeaders.world_map_thumbnails.refresh(store)
+				tasks = [handle_super_world(info) for info in super_worlds]
+				await asyncio.gather(*tasks)
+
+				world_database_entries = []
+				world_levels_database_entries = []
+
+				i = 0
+				for world in super_worlds:
+					pid = chunk[i][0]
+					print("Created %d" % world["created"])
+					world_database_entries.append((
+						str(pid),
+						world["id"],
+						world["worlds"],
+						world["levels"],
+						world["planet_type"],
+						world["created"],
+						world["unk1"],
+						world["unk5"],
+						world["unk6"],
+						world["unk7"],
+						world["thumbnail_data"],
+						world["thumbnail"]["url"],
+						world["thumbnail"]["size"],
+						world["thumbnail"]["filename"]
+					))
+					j = 0
+					print(world["courses"])
+					print(world["ninjis"])
+					for level in world["courses"]:
+						world_levels_database_entries.append((
+							str(pid),
+							level,
+							world["ninjis"][j] if j < len(world["ninjis"]) else 0
+						))
+						j += 1
+					i += 1
+
+				if len(world_database_entries) != 0:
+					cur.executemany("INSERT INTO world VALUES (" + ",".join(["?"] * 14) + ")", world_database_entries)
+				if len(world_levels_database_entries) != 0:
+					cur.executemany("INSERT INTO world_levels VALUES (?,?,?)", world_levels_database_entries)
+
+				con.commit()
+
+	con.commit()
+	con.close()
+
+	return ORJSONResponse(content={})
+
+@app.get("/scraping4")
+async def scraping4(pids: str = "0"):
+	if not debug_enabled:
+		return ORJSONResponse(status_code=400, content={"error": "Wat"})
+	player_ids = list(int(x) for x in pids.split(","))
+	con = sqlite3.connect("dump.db")
+	cur = con.cursor()
+
 	cur.execute("""CREATE TABLE IF NOT EXISTS user_posted (
 		pid TEXT,
 		data_id INTEGER
@@ -3128,7 +3307,57 @@ async def scraping2(pids: str = "0"):
 	user_world_record_database_entries = []
 
 	async def handle_player(pid, store):
-		posted = (await add_death_positions_json(store, course_info["course_id"], True, False))["deaths"]
+		str_pid = str(pid)
+		param = datastore.SearchCoursesPostedByParam()
+		param.range.offset = 0
+		param.range.size = 100
+		param.pids = [pid]
+		response = await store.search_courses_posted_by(param)
+		for course in response.courses:
+			user_posted_database_entries.append((
+				str_pid,
+				course.data_id
+			))
+		param = datastore.SearchCoursesPositiveRatedByParam()
+		param.count = 100
+		param.pid = pid
+		courses = await store.search_courses_positive_rated_by(param)
+		for course in courses:
+			user_liked_database_entries.append((
+				str_pid,
+				course.data_id
+			))
+		param = datastore.SearchCoursesPlayedByParam()
+		param.count = 100
+		param.pid = pid
+		courses = await store.search_courses_played_by(param)
+		for course in courses:
+			user_played_database_entries.append((
+				str_pid,
+				course.data_id
+			))
+		param = datastore.SearchCoursesFirstClearParam()
+		param.range.offset = 0
+		param.range.size = 100
+		param.pid = pid
+		response = await store.search_courses_first_clear(param)
+		for course in response.courses:
+			user_first_cleared_database_entries.append((
+				str_pid,
+				course.data_id
+			))
+		param = datastore.SearchCoursesBestTimeParam()
+		param.range.offset = 0
+		param.range.size = 100
+		param.pid = pid
+		response = await store.search_courses_best_time(param)
+		for course in response.courses:
+			user_world_record_database_entries.append((
+				str_pid,
+				course.data_id
+			))
+
+	await check_tokens()
 
 	async with backend.connect(s, HOST, PORT) as be:
 		async with be.login(str(user_id), auth_info=auth_info) as client1:
@@ -3151,62 +3380,215 @@ async def scraping2(pids: str = "0"):
 								tasks.append(handle_player(chunk[3], store4))
 						await asyncio.gather(*tasks)
 
-	worlds = []
-	world_database_entries = []
-	world_levels_database_entries = []
+	if len(user_posted_database_entries) != 0:
+		cur.executemany("INSERT INTO user_posted VALUES (?,?)", user_posted_database_entries)
+	if len(user_liked_database_entries) != 0:
+		cur.executemany("INSERT INTO user_liked VALUES (?,?)", user_liked_database_entries)
+	if len(user_played_database_entries) != 0:
+		cur.executemany("INSERT INTO user_played VALUES (?,?)", user_played_database_entries)
+	if len(user_first_cleared_database_entries) != 0:
+		cur.executemany("INSERT INTO user_first_cleared VALUES (?,?)", user_first_cleared_database_entries)
+	if len(user_world_record_database_entries) != 0:
+		cur.executemany("INSERT INTO user_world_record VALUES (?,?)", user_world_record_database_entries)
+	
+	con.commit()
+	con.close()
+	return ORJSONResponse(content={"posted": len(user_posted_database_entries), "liked": len(user_liked_database_entries), "played": len(user_played_database_entries), "first_cleared": len(user_first_cleared_database_entries), "world_record": len(user_world_record_database_entries)})
 
-	vals = con.execute("SELECT pid,super_world_id FROM user WHERE pid IN (%s)" % pids)
+@app.get("/scraping5")
+async def scraping5():
+	if not debug_enabled:
+		return ORJSONResponse(status_code=400, content={"error": "Wat"})
+	con = sqlite3.connect("dump.db")
+	cur = con.cursor()
+	
+	cur.execute("""CREATE TABLE IF NOT EXISTS ninji (
+		data_id INTEGER,
+		pid TEXT,
+		time INTEGER,
+		replay BLOB,
+		replay_url TEXT,
+		replay_size INTEGER,
+		replay_filename TEXT
+	)""")
+
+	existing_replays = set()
+	vals = con.execute("SELECT replay_filename FROM ninji")
 	for val in vals:
-		if val[1]:
-			# Has a super world
-			worlds.append((int(val[0]), val[1]))
+		existing_replays.add(val[0])
 
-	async def handle_super_world(info):
-		body = await ServerHeaders.world_map_thumbnails.request_url(info["thumbnail"]["url"], None)
-		image = Image.open(io.BytesIO(body))
-		image_bytes = io.BytesIO()
-		image.save(image_bytes, optimize=True, quality=95, format="jpeg")
-		info["thumbnail_data"] = image_bytes.getvalue()
+	async def handle_level(data_id_to_check):
+		time_to_check = 0
+		ghosts_to_add = []
+		async def handle_replays(ghost, store):
+			try:
+				replay = await ServerHeaders.ninji_ghost_replay.request_url(ghost.replay_file.url, store)
+				ghosts_to_add.append((
+					data_id_to_check,
+					str(ghost.pid),
+					ghost.time,
+					replay,
+					ghost.replay_file.url,
+					ghost.replay_file.size,
+					ghost.replay_file.filename
+				))
+				existing_replays.add(ghost.replay_file.filename)
+			except:
+				print("Could not download replay")
+
+		async with backend.connect(s, HOST, PORT) as be:
+			async with be.login(str(user_id), auth_info=auth_info) as client:
+				store = datastore.DataStoreClientSMM2(client)
+				size_of_additions = -1
+				while True:
+					await ServerHeaders.ninji_ghost_replay.refresh_if_needed(store)
+					param = datastore.GetEventCourseGhostParam()
+					param.data_id = data_id_to_check
+					param.time = time_to_check
+					param.count = 100
+					try:
+						ghosts = await store.get_event_course_ghost(param)
+					except:
+						print("Reach end")
+						break
+					tasks = []
+					for ghost in ghosts:
+						if ghost.replay_file.filename not in existing_replays:
+							tasks.append(handle_replays(ghost, store))
+					await asyncio.gather(*tasks)
+					size_of_additions = len(ghosts_to_add)
+					print("Additions %d" % size_of_additions)
+					if len(ghosts_to_add) != 0:
+						cur.executemany("INSERT INTO ninji VALUES (?,?,?,?,?,?,?)", ghosts_to_add)
+						con.commit()
+						ghosts_to_add.clear()
+					time_to_check += 1
+
+	await asyncio.gather(handle_level(33883306), handle_level(29234075), handle_level(28460377), handle_level(27439231), handle_level(26746705), handle_level(25984384), handle_level(25459053), handle_level(25045367), handle_level(24477739), handle_level(23738173), handle_level(23303835), handle_level(22587491), handle_level(21858065), handle_level(20182790), handle_level(17110274), handle_level(15675466), handle_level(14827235), handle_level(14328331), handle_level(13428950), handle_level(12619193), handle_level(12171034))
+	con.close()
+
+	return ORJSONResponse(content={})
+
+@app.get("/scraping6")
+async def scraping6():
+	if not debug_enabled:
+		return ORJSONResponse(status_code=400, content={"error": "Wat"})
+	con = sqlite3.connect("dump.db")
+	cur = con.cursor()
+	
+	cur.execute("""CREATE TABLE IF NOT EXISTS ninji_level (
+		data_id INTEGER,
+		name TEXT,
+		description TEXT,
+		uploaded INTEGER,
+		ended INTEGER,
+		gamestyle INTEGER,
+		theme INTEGER,
+		medal_time INTEGER,
+		clear_condition INTEGER,
+		clear_condition_magnitude INTEGER,
+		unk3_0 INTEGER,
+		unk3_1 INTEGER,
+		unk3_2 INTEGER,
+		unk5 INTEGER,
+		unk6 INTEGER,
+		unk9 INTEGER,
+		level_data BLOB,
+		one_screen_thumbnail BLOB,
+		one_screen_thumbnail_url TEXT,
+		one_screen_thumbnail_size INTEGER,
+		one_screen_thumbnail_filename TEXT,
+		entire_thumbnail BLOB,
+		entire_thumbnail_url TEXT,
+		entire_thumbnail_size INTEGER,
+		entire_thumbnail_filename TEXT
+	)""")
 
 	async with backend.connect(s, HOST, PORT) as be:
 		async with be.login(str(user_id), auth_info=auth_info) as client:
 			store = datastore.DataStoreClientSMM2(client)
-			await ServerHeaders.world_map_thumbnails.refresh(store)
-			for chunk in [worlds[i:i+500] for i in range(len(worlds))[::500]]:
-				super_worlds = (await search_world_map(store, [i[1] for i in chunk], True, False))["super_worlds"]
-				tasks = [handle_super_world(info) for info in super_worlds]
-				await asyncio.gather(*tasks)
-				i = 0
-				for world in super_worlds:
-					pid = chunk[i][0]
-					world_database_entries.append((
-						str(pid),
-						world["id"],
-						world["worlds"],
-						world["levels"],
-						world["planet_type"],
-						world["created"],
-						world["unk5"],
-						world["unk6"],
-						world["unk7"],
-						world["thumbnail_data"],
-						world["thumbnail"]["url"],
-						world["thumbnail"]["size"],
-						world["thumbnail"]["filename"]
-					))
-					j = 0
-					for level in world["courses"]:
-						world_levels_database_entries.append((
-							str(pid),
-							level,
-							world["ninjis"][j]
-						))
-						j += 1
-					i += 1
-	
-	con.commit()
-	con.close()
+			await ServerHeaders.level_thumbnail.refresh(store)
+			await ServerHeaders.entire_level_thumbnail.refresh(store)
+			param = datastore.SearchCoursesEventParam()
+			param.option = datastore.EventCourseOption.ALL
+			courses = await store.search_courses_event(param)
+			results = []
+			for course in courses:
+				param = datastore.DataStorePrepareGetParam()
+				param.data_id = course.data_id
+				req_info = await store.prepare_get_object(param)
+				response = await http.get(req_info.url)
+				response.raise_if_error()
+				Course = encryption.Course()
+				Course.load(response.body)
+				Course.decrypt()
+				level_data = zlib.compress(Course.data)
+				level_thumbnail_data = await download_thumbnail(store, course.one_screen_thumbnail.url, None, ServerDataTypes.level_thumbnail, False)
+				entire_level_thumbnail = await download_thumbnail(store, course.entire_thumbnail.url, None, ServerDataTypes.entire_level_thumbnail, False)
+				results.append((
+					course.data_id,
+					course.name,
+					course.description,
+					course.upload_time.value(),
+					course.end_time.value(),
+					course.game_style,
+					course.course_theme,
+					course.medal_time,
+					course.unk7,
+					course.unk8,
+					course.unk3[0],
+					course.unk3[1],
+					course.unk3[2],
+					course.unk5,
+					course.unk6,
+					course.unk9,
+					level_data,
+					level_thumbnail_data,
+					course.one_screen_thumbnail.url,
+					course.one_screen_thumbnail.filesize,
+					course.one_screen_thumbnail.filename,
+					entire_level_thumbnail,
+					course.entire_thumbnail.url,
+					course.entire_thumbnail.filesize,
+					course.entire_thumbnail.filename,
+				))
+			cur.executemany("INSERT INTO ninji_level VALUES (" + ",".join(["?"] * 25) + ")", results)
+			con.commit()
+			con.close()
+
 	return ORJSONResponse(content={})
+
+@app.get("/scraping7")
+async def scraping7():
+	if not debug_enabled:
+		return ORJSONResponse(status_code=400, content={"error": "Wat"})
+
+	con = sqlite3.connect("dump.db")
+	data_ids = []
+	res = con.execute("SELECT data_id FROM level")
+	i = 0
+	for data_id in res:
+		data_ids.append(int(data_id[0]))
+		i += 1
+		if i % 10000 == 0:
+			print("Reached id %d" % i)
+	con.close()
+
+	# Should never print a single time, except for actual ninjis
+	with open("weird_levels.txt", "a") as logging_file:
+		async with backend.connect(s, HOST, PORT) as be:
+			async with be.login(str(user_id), auth_info=auth_info) as client:
+				store = datastore.DataStoreClientSMM2(client)
+				for data_id in data_ids:
+					param = datastore.GetEventCourseGhostParam()
+					param.data_id = data_id
+					param.time = 0
+					param.count = 100
+					ghosts = await store.get_event_course_ghost(param)
+					if len(ghosts) != 0:
+						print("What %d" % data_id)
+						print("What %d" % data_id, file=logging_file)
+					logging_file.flush()
 
 loop_handler = AsyncLoopThread()
 loop_handler.start()

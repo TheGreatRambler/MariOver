@@ -18,6 +18,4 @@ The backend of [the Mario Maker 2 API](https://tgrcode.com/mm2/docs/) + the scra
 4. When you update your switch and `NintendoClients` has updated, run `pip install git+https://github.com/kinnay/NintendoClients.git --upgrade` and run `python generate_console_data.py` again
 
 # Running
-`uvicorn levelInfoWebserver:app --port 1234` with any port can be used to start the server.
-
-You should then be able to see view `http://localhost:1234/docs/`.
+`uvicorn levelInfoWebserver:app --port 1234` with any port can be used to start the server. Documentation can be found at `http://localhost:1234/docs/`.
