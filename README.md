@@ -1,5 +1,5 @@
 # MariOver
-The backend of [the Mario Maker 2 API](https://tgrcode.com/mm2/docs/) + the scraper used to download every level. Hey Nintendo, it's MariOver.
+The backend of [the Mario Maker 2 API](https://tgrcode.com/mm2/docs/). Hey Nintendo, it's MariOver.
 
 # Setting up
 0. Run `pip install -r requirements.txt`
