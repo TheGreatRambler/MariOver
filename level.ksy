@@ -416,8 +416,8 @@ types:
         3: hammer_bro
         4: block
         5: question_block
-        6: stone
-        7: hard_block
+        6: hard_block
+        7: ground
         8: coin
         9: pipe
         10: spring
@@ -436,7 +436,7 @@ types:
         23: note_block
         24: fire_bar
         25: spiny
-        26: hard_block
+        26: goal_ground
         27: goal
         28: buzzy_beetle
         29: hidden_block
@@ -463,7 +463,7 @@ types:
         50: jumping_machine
         51: skipsqueak
         52: wiggler
-        53: conveyor_belt
+        53: fast_conveyor_belt
         54: burner
         55: door
         56: cheep_cheep
@@ -495,7 +495,7 @@ types:
         82: donut
         83: skewer
         84: snake_block
-        85: spike_block
+        85: track_block
         86: charvaargh
         87: slight_slope
         88: steep_slope
