@@ -300,3 +300,15 @@ def encrypt_btl(data: bytes, *args, **kwargs) -> bytes:
     )
 
     return encrypted + aes.iv + seed + mac.digest()
+
+
+class Course(object):
+
+    def __init__(self, data: bytes, *args, **kwargs) -> None:
+        self.data: bytes = data
+
+    def decrypt(self, *args, **kwargs) -> None:
+        self.data: bytes = decrypt_bcd(self.data)
+
+    def encrypt(self, *args, **kwargs) -> None:
+        self.data: bytes = encrypt_bcd(self.data)
