@@ -12,18 +12,6 @@ from . import keytables
 
 
 def decrypt_bcd(data: bytes, *args, **kwargs) -> bytes:
-    assert(
-        isinstance(
-            data,
-            bytes
-        )
-    )
-
-    assert(
-        len(
-            data
-        ) == 0x5c000
-    )
     stream: io.BytesIO = io.BytesIO(
         data
     )
@@ -65,10 +53,6 @@ def decrypt_bcd(data: bytes, *args, **kwargs) -> bytes:
     ).decode(
         'utf-8'
     )
-    assert(
-        filetype == 0x10 and
-        magic == 'SCDL'
-    )
 
     iv: bytes = footer.read(
         0x10
@@ -103,11 +87,6 @@ def decrypt_bcd(data: bytes, *args, **kwargs) -> bytes:
         encrypted
     )
 
-    assert(
-        zlib.crc32(
-            decrypted
-        ) == crc32
-    )
 
     key: bytes = crypto.create_key(
         random,
@@ -129,18 +108,6 @@ def decrypt_bcd(data: bytes, *args, **kwargs) -> bytes:
 
 
 def encrypt_bcd(data: bytes, *args, **kwargs) -> bytes:
-    assert(
-        isinstance(
-            data,
-            bytes
-        )
-    )
-
-    assert(
-        len(
-            data
-        ) == 0x5bfc0
-    )
     stream: io.BytesIO = io.BytesIO(
         data
     )
@@ -219,18 +186,6 @@ def encrypt_bcd(data: bytes, *args, **kwargs) -> bytes:
 
 
 def decrypt_btl(data: bytes, *args, **kwargs) -> bytes:
-    assert(
-        isinstance(
-            data,
-            bytes
-        )
-    )
-
-    assert(
-        len(
-            data
-        ) == 0x1c000
-    )
     stream: io.BytesIO = io.BytesIO(
         data
     )
@@ -295,18 +250,6 @@ def decrypt_btl(data: bytes, *args, **kwargs) -> bytes:
 
 
 def encrypt_btl(data: bytes, *args, **kwargs) -> bytes:
-    assert(
-        isinstance(
-            data,
-            bytes
-        )
-    )
-
-    assert(
-        len(
-            data
-        ) == 0x1bfd0
-    )
     stream: io.BytesIO = io.BytesIO(
         data
     )
