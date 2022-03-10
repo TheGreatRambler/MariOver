@@ -11,7 +11,11 @@ from nintendo.sead import Random
 from . import keytables
 
 
-def decrypt_bcd(data: bytes, *args, **kwargs) -> bytes:
+def decrypt_bcd(
+    data: bytes,
+    *args,
+    **kwargs
+) -> bytes:
     stream: io.BytesIO = io.BytesIO(
         data
     )
@@ -107,7 +111,11 @@ def decrypt_bcd(data: bytes, *args, **kwargs) -> bytes:
     return decrypted
 
 
-def encrypt_bcd(data: bytes, *args, **kwargs) -> bytes:
+def encrypt_bcd(
+    data: bytes,
+    *args,
+    **kwargs
+) -> bytes:
     stream: io.BytesIO = io.BytesIO(
         data
     )
@@ -185,7 +193,11 @@ def encrypt_bcd(data: bytes, *args, **kwargs) -> bytes:
     return header.getvalue() + encrypted + aes.iv + seed + mac.digest()
 
 
-def decrypt_btl(data: bytes, *args, **kwargs) -> bytes:
+def decrypt_btl(
+    data: bytes,
+    *args,
+    **kwargs
+) -> bytes:
     stream: io.BytesIO = io.BytesIO(
         data
     )
@@ -249,7 +261,11 @@ def decrypt_btl(data: bytes, *args, **kwargs) -> bytes:
     return decrypted
 
 
-def encrypt_btl(data: bytes, *args, **kwargs) -> bytes:
+def encrypt_btl(
+    data: bytes,
+    *args,
+    **kwargs
+) -> bytes:
     stream: io.BytesIO = io.BytesIO(
         data
     )
