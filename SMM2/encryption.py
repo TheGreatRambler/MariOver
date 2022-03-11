@@ -318,7 +318,9 @@ def encrypt_btl(
     return encrypted + aes.iv + seed + mac.digest()
 
 
-class Course(object):
+class Course(
+    object
+):
 
     def __init__(self, data: bytes, *args, **kwargs) -> None:
         self.data: bytes = data
