@@ -1052,7 +1052,7 @@ async def add_comment_info_json(store, course_id, course_info, noCaching = False
 				comment_json["unk10"] = comment.unk10 # Usually 0
 				comment_json["unk12"] = comment.unk12 # Usually false
 				if not debug_enabled:
-					comment_json["unk14"] = hexlify(comment.unk14).decode() # Usually nothing
+					comment_json["unk14"] = base64.b64encode(comment.unk14).decode("ascii") # Usually nothing
 				else:
 					comment_json["unk14"] = comment.unk14
 				comment_json["unk17"] = comment.unk17 # Usually 0
@@ -1479,7 +1479,7 @@ async def get_course_info_json(request_type, request_param, store, noCaching = F
 			if debug_enabled and not save:
 				course_info["unk3"] = course.unk3
 			else:
-				course_info["unk3"] = hexlify(course.unk3).decode()
+				course_info["unk3"] = base64.b64encode(course.unk3).decode("ascii")
 			course_info["unk9"] = course.unk9
 			course_info["unk10"] = course.unk10
 			course_info["unk11"] = course.unk11
@@ -1714,6 +1714,10 @@ user_id = None
 auth_info = None
 device_token_generated_time = None
 id_token_generated_time = None
+device_token = None
+app_token = None
+access_token = None
+id_token = None
 getting_credentials = asyncio.Lock()
 
 def milliseconds_since_epoch():
@@ -1727,6 +1731,10 @@ async def check_tokens():
 	global auth_info
 	global device_token_generated_time
 	global id_token_generated_time
+	global device_token
+	global app_token
+	global access_token
+	global id_token
 	global getting_credentials
 	if getting_credentials.locked():
 		# Another thread is busy refreshing the credentials, wait until it is done and return

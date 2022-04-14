@@ -11,7 +11,7 @@
 
 	<style>
 		body {
-			background-color: #ffcba6;
+			background-color: #86532D;
 		}
 
 		.material-icons {
@@ -25,9 +25,10 @@
 			left: 0;
 			width: 20%;
 			height: 100%;
-			background-color: #57351D;
+			background-color: #402715;
 			font-family: Hack;
 			font-weight: bold;
+			color:white;
 		}
 
 		#rightContent {
@@ -43,6 +44,7 @@
 		#apiTitle {
 			font-size: 45px;
 			font-weight: bold;
+			color: white;
 		}
 
 		#endpointCollection {
@@ -73,7 +75,9 @@
 
 <body>
 	<div id="leftCover" class="z-depth-5">
-		<img src="images/logo.png" width="100%">
+		<a href="https://tgrcode.com/">
+			<img src="images/logo.png" width="100%">
+		</a>
 		<div class="row">
 			<div class="col s4"><a href="https://twitter.com/tgr_code"><img src="images/twatter.png" width="100%"></a>
 			</div>
@@ -665,7 +669,9 @@
 							var super_world_id = document.getElementById("super_world_id_super_world");
 
 							document.addEventListener("DOMContentLoaded", function() {
-								createLink([super_world_id], [val => true], document.getElementById("super_world_link"), vals =>
+								createLink([super_world_id], [val => val.length == 37 &&
+								val.charAt(16) == "_" && /^[a-z0-9_]+$/.test(val)
+								], document.getElementById("super_world_link"), vals =>
 									"https://tgrcode.com/mm2/super_world/" +
 									vals[0]);
 							});
@@ -701,7 +707,7 @@
 
 							document.addEventListener("DOMContentLoaded", function() {
 								createLink([count, difficulty], [val =>
-										/^[0-9]+$/.test(val) && BigInt(val) > 0 && BigInt(val) <= BigInt(300), val =>
+										/^[0-9]+$/.test(val) && BigInt(val) > 0 && BigInt(val) <= BigInt(500), val =>
 										val ==
 										"e" || val == "n" || val == "ex" || val == "sex"
 									], document.getElementById("search_endless_mode_link"), vals =>
