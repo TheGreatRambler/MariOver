@@ -1511,7 +1511,6 @@ async def get_course_info_json(request_type, request_param, store, noCaching = F
 		if len(uploader_pids) != 0:
 			if not debug_enabled:
 				i = 0
-				print(all_pids_result[:len(uploader_pids)])
 				for user in all_pids_result[:len(uploader_pids)]:
 					if uploader_pids[i] != 0:
 						course_info = course_info_json["courses"][i]
@@ -1715,10 +1714,7 @@ user_id = None
 auth_info = None
 device_token_generated_time = None
 id_token_generated_time = None
-device_token = None
-app_token = None
-access_token = None
-id_token = None
+getting_credentials = asyncio.Lock()
 
 def milliseconds_since_epoch():
 	return time.time_ns() // 1000000
@@ -1731,13 +1727,14 @@ async def check_tokens():
 	global auth_info
 	global device_token_generated_time
 	global id_token_generated_time
-	global device_token
-	global app_token
-	global access_token
-	global id_token
+	global getting_credentials
+	if getting_credentials.locked():
+		# Another thread is busy refreshing the credentials, wait until it is done and return
+		async with getting_credentials:
+			return
 	# Either has never been generated or is older than 23.9 hours
 	if device_token_generated_time is None or (milliseconds_since_epoch() - device_token_generated_time) > 85340000:
-		async with lock:
+		async with getting_credentials:
 			cert = info.get_tls_cert()
 			pkey = info.get_tls_key()
 
@@ -1785,7 +1782,7 @@ async def check_tokens():
 			print("Loaded settings")
 	# Either has never been generated or is older than 2.9 hours
 	if id_token_generated_time is None or (milliseconds_since_epoch() - id_token_generated_time) > 1044000:
-		async with lock:
+		async with getting_credentials:
 			print("Generate id token")
 			baas = BAASClient()
 			baas.set_system_version(SYSTEM_VERSION)
@@ -1823,7 +1820,7 @@ class AsyncLoopThread(Thread):
 		self.loop.run_forever()
 
 app = FastAPI(openapi_url=None)
-lock = asyncio.Lock()
+lock = asyncio.Semaphore(3)
 
 app.add_middleware(
 	CORSMiddleware,
