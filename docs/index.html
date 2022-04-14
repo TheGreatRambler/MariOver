@@ -707,7 +707,7 @@
 
 							document.addEventListener("DOMContentLoaded", function() {
 								createLink([count, difficulty], [val =>
-										/^[0-9]+$/.test(val) && BigInt(val) > 0 && BigInt(val) <= BigInt(500), val =>
+										/^[0-9]+$/.test(val) && BigInt(val) > 0 && BigInt(val) <= BigInt(300), val =>
 										val ==
 										"e" || val == "n" || val == "ex" || val == "sex"
 									], document.getElementById("search_endless_mode_link"), vals =>

@@ -2407,8 +2407,8 @@ async def search_endless_mode(count: int = 10, difficulty: str = "n"):
 	difficulty_num = difficulty_string_to_num(difficulty)
 	if difficulty_num == -1:
 		return ORJSONResponse(status_code=400, content={"error": "Difficulty %s is an invalid difficulty" % difficulty})
-	if count < 1 or count > 500:
-		return ORJSONResponse(status_code=400, content={"error": "Count %d is an invalid count, must be between 1 and 500" % count})
+	if count < 1 or count > 300:
+		return ORJSONResponse(status_code=400, content={"error": "Count %d is an invalid count, must be between 1 and 300" % count})
 	await check_tokens()
 	async with lock:
 		async with backend.connect(s, HOST, PORT) as be:
