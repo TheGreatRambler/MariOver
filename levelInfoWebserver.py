@@ -1074,7 +1074,7 @@ async def add_comment_info_json(store, course_id, course_info, noCaching = False
 
 		if len(user_pids) != 0:
 			i = 0
-			for users_partial in [user_pids[j:j+300] for j in range(len(user_pids))[::300]]:
+			for users_partial in [user_pids[j:j+500] for j in range(len(user_pids))[::500]]:
 				if not debug_enabled:
 					param = datastore.GetUsersParam()
 					param.pids = users_partial
@@ -1498,16 +1498,21 @@ async def get_course_info_json(request_type, request_param, store, noCaching = F
 	del course_info_json["courses"][i:]
 
 	if store:
-		if len(uploader_pids) != 0:
-			if not debug_enabled:
+		all_pids = uploader_pids + first_clear_pids + record_holder_pids
+		all_pids_split = [all_pids[i:i+500] for i in range(len(all_pids))[::500]]
+		all_pids_result = []
+		if not debug_enabled:
+			for pids_chunk in all_pids_split:
 				param = datastore.GetUsersParam()
-				param.pids = uploader_pids
+				param.pids = pids_chunk
 				param.option = datastore.UserOption.ALL
 
-				response = await store.get_users(param)
-
+				all_pids_result += (await store.get_users(param)).users
+		if len(uploader_pids) != 0:
+			if not debug_enabled:
 				i = 0
-				for user in response.users:
+				print(all_pids_result[:len(uploader_pids)])
+				for user in all_pids_result[:len(uploader_pids)]:
 					if uploader_pids[i] != 0:
 						course_info = course_info_json["courses"][i]
 						course_info["uploader"] = {}
@@ -1523,14 +1528,8 @@ async def get_course_info_json(request_type, request_param, store, noCaching = F
 
 		if len(first_clear_pids) != 0:
 			if not debug_enabled:
-				param = datastore.GetUsersParam()
-				param.pids = first_clear_pids
-				param.option = datastore.UserOption.ALL
-
-				response = await store.get_users(param)
-
 				i = 0
-				for user in response.users:
+				for user in all_pids_result[len(uploader_pids):len(uploader_pids)+len(first_clear_pids)]:
 					if first_clear_pids[i] != 0:
 						course_info = course_info_json["courses"][i]
 						course_info["first_completer"] = {}
@@ -1546,14 +1545,8 @@ async def get_course_info_json(request_type, request_param, store, noCaching = F
 
 		if len(record_holder_pids) != 0:
 			if not debug_enabled:
-				param = datastore.GetUsersParam()
-				param.pids = record_holder_pids
-				param.option = datastore.UserOption.ALL
-
-				response = await store.get_users(param)
-
 				i = 0
-				for user in response.users:
+				for user in all_pids_result[len(uploader_pids)+len(first_clear_pids):]:
 					if record_holder_pids[i] != 0:
 						course_info = course_info_json["courses"][i]
 						course_info["record_holder"] = {}
@@ -1840,6 +1833,16 @@ app.add_middleware(
 	allow_headers=["*"],
 )
 
+if "banned_ips" in args:
+	banned_ips = args["banned_ips"]
+else:
+	banned_ips = []
+@app.middleware("http")
+async def add_process_time_header(request, call_next):
+	if str(request.client.host) in banned_ips:
+		return ORJSONResponse(status_code=400, content={})
+	return await call_next(request)
+
 print("Start FastAPI")
 
 app.mount("/docs", StaticFiles(directory="docs", html=True), name="docs")
@@ -1903,8 +1906,8 @@ async def read_level_infos(course_ids: str):
 			return ORJSONResponse(status_code=400, content={"error": "Code corresponds to a maker", "course_id": id})
 		corrected_course_ids.append(id)
 
-	if len(corrected_course_ids) > 300:
-		return ORJSONResponse(status_code=400, content={"error": "Number of courses requested must be between 1 and 300"})
+	if len(corrected_course_ids) > 500:
+		return ORJSONResponse(status_code=400, content={"error": "Number of courses requested must be between 1 and 500"})
 
 	await check_tokens()
 	async with lock:
@@ -2399,8 +2402,8 @@ async def search_endless_mode(count: int = 10, difficulty: str = "n"):
 	difficulty_num = difficulty_string_to_num(difficulty)
 	if difficulty_num == -1:
 		return ORJSONResponse(status_code=400, content={"error": "Difficulty %s is an invalid difficulty" % difficulty})
-	if count < 1 or count > 300:
-		return ORJSONResponse(status_code=400, content={"error": "Count %d is an invalid count, must be between 1 and 300" % count})
+	if count < 1 or count > 500:
+		return ORJSONResponse(status_code=400, content={"error": "Count %d is an invalid count, must be between 1 and 500" % count})
 	await check_tokens()
 	async with lock:
 		async with backend.connect(s, HOST, PORT) as be:
