@@ -576,11 +576,11 @@ types:
       - id: index
         type: u2
         doc: Snake block node index
-      - id: unk1
-        type: u4
       - id: direction
         type: u2
         doc: Snake block node direction
+      - id: unk1
+        type: u4
   clear_pipe:
     seq:
       - id: index

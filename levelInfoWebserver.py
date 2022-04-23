@@ -1052,7 +1052,7 @@ async def add_comment_info_json(store, course_id, course_info, noCaching = False
 				comment_json["unk10"] = comment.unk10 # Usually 0
 				comment_json["unk12"] = comment.unk12 # Usually false
 				if not debug_enabled:
-					comment_json["unk14"] = hexlify(comment.unk14).decode() # Usually nothing
+					comment_json["unk14"] = base64.b64encode(comment.unk14).decode("ascii") # Usually nothing
 				else:
 					comment_json["unk14"] = comment.unk14
 				comment_json["unk17"] = comment.unk17 # Usually 0
@@ -1074,7 +1074,7 @@ async def add_comment_info_json(store, course_id, course_info, noCaching = False
 
 		if len(user_pids) != 0:
 			i = 0
-			for users_partial in [user_pids[j:j+300] for j in range(len(user_pids))[::300]]:
+			for users_partial in [user_pids[j:j+500] for j in range(len(user_pids))[::500]]:
 				if not debug_enabled:
 					param = datastore.GetUsersParam()
 					param.pids = users_partial
@@ -1479,7 +1479,7 @@ async def get_course_info_json(request_type, request_param, store, noCaching = F
 			if debug_enabled and not save:
 				course_info["unk3"] = course.unk3
 			else:
-				course_info["unk3"] = hexlify(course.unk3).decode()
+				course_info["unk3"] = base64.b64encode(course.unk3).decode("ascii")
 			course_info["unk9"] = course.unk9
 			course_info["unk10"] = course.unk10
 			course_info["unk11"] = course.unk11
@@ -1498,16 +1498,20 @@ async def get_course_info_json(request_type, request_param, store, noCaching = F
 	del course_info_json["courses"][i:]
 
 	if store:
-		if len(uploader_pids) != 0:
-			if not debug_enabled:
+		all_pids = uploader_pids + first_clear_pids + record_holder_pids
+		all_pids_split = [all_pids[i:i+500] for i in range(len(all_pids))[::500]]
+		all_pids_result = []
+		if not debug_enabled:
+			for pids_chunk in all_pids_split:
 				param = datastore.GetUsersParam()
-				param.pids = uploader_pids
+				param.pids = pids_chunk
 				param.option = datastore.UserOption.ALL
 
-				response = await store.get_users(param)
-
+				all_pids_result += (await store.get_users(param)).users
+		if len(uploader_pids) != 0:
+			if not debug_enabled:
 				i = 0
-				for user in response.users:
+				for user in all_pids_result[:len(uploader_pids)]:
 					if uploader_pids[i] != 0:
 						course_info = course_info_json["courses"][i]
 						course_info["uploader"] = {}
@@ -1523,14 +1527,8 @@ async def get_course_info_json(request_type, request_param, store, noCaching = F
 
 		if len(first_clear_pids) != 0:
 			if not debug_enabled:
-				param = datastore.GetUsersParam()
-				param.pids = first_clear_pids
-				param.option = datastore.UserOption.ALL
-
-				response = await store.get_users(param)
-
 				i = 0
-				for user in response.users:
+				for user in all_pids_result[len(uploader_pids):len(uploader_pids)+len(first_clear_pids)]:
 					if first_clear_pids[i] != 0:
 						course_info = course_info_json["courses"][i]
 						course_info["first_completer"] = {}
@@ -1546,14 +1544,8 @@ async def get_course_info_json(request_type, request_param, store, noCaching = F
 
 		if len(record_holder_pids) != 0:
 			if not debug_enabled:
-				param = datastore.GetUsersParam()
-				param.pids = record_holder_pids
-				param.option = datastore.UserOption.ALL
-
-				response = await store.get_users(param)
-
 				i = 0
-				for user in response.users:
+				for user in all_pids_result[len(uploader_pids)+len(first_clear_pids):]:
 					if record_holder_pids[i] != 0:
 						course_info = course_info_json["courses"][i]
 						course_info["record_holder"] = {}
@@ -1726,6 +1718,7 @@ device_token = None
 app_token = None
 access_token = None
 id_token = None
+getting_credentials = asyncio.Lock()
 
 def milliseconds_since_epoch():
 	return time.time_ns() // 1000000
@@ -1742,9 +1735,14 @@ async def check_tokens():
 	global app_token
 	global access_token
 	global id_token
+	global getting_credentials
+	if getting_credentials.locked():
+		# Another thread is busy refreshing the credentials, wait until it is done and return
+		async with getting_credentials:
+			return
 	# Either has never been generated or is older than 23.9 hours
 	if device_token_generated_time is None or (milliseconds_since_epoch() - device_token_generated_time) > 85340000:
-		async with lock:
+		async with getting_credentials:
 			cert = info.get_tls_cert()
 			pkey = info.get_tls_key()
 
@@ -1792,7 +1790,7 @@ async def check_tokens():
 			print("Loaded settings")
 	# Either has never been generated or is older than 2.9 hours
 	if id_token_generated_time is None or (milliseconds_since_epoch() - id_token_generated_time) > 1044000:
-		async with lock:
+		async with getting_credentials:
 			print("Generate id token")
 			baas = BAASClient()
 			baas.set_system_version(SYSTEM_VERSION)
@@ -1830,7 +1828,7 @@ class AsyncLoopThread(Thread):
 		self.loop.run_forever()
 
 app = FastAPI(openapi_url=None)
-lock = asyncio.Lock()
+lock = asyncio.Semaphore(3)
 
 app.add_middleware(
 	CORSMiddleware,
@@ -1839,6 +1837,16 @@ app.add_middleware(
 	allow_methods=["*"],
 	allow_headers=["*"],
 )
+
+if "banned_ips" in args:
+	banned_ips = args["banned_ips"]
+else:
+	banned_ips = []
+@app.middleware("http")
+async def add_process_time_header(request, call_next):
+	if str(request.client.host) in banned_ips:
+		return ORJSONResponse(status_code=400, content={})
+	return await call_next(request)
 
 print("Start FastAPI")
 
@@ -1903,8 +1911,8 @@ async def read_level_infos(course_ids: str):
 			return ORJSONResponse(status_code=400, content={"error": "Code corresponds to a maker", "course_id": id})
 		corrected_course_ids.append(id)
 
-	if len(corrected_course_ids) > 300:
-		return ORJSONResponse(status_code=400, content={"error": "Number of courses requested must be between 1 and 300"})
+	if len(corrected_course_ids) > 500:
+		return ORJSONResponse(status_code=400, content={"error": "Number of courses requested must be between 1 and 500"})
 
 	await check_tokens()
 	async with lock:
