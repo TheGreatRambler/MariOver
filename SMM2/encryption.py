@@ -1,198 +1,332 @@
-# Copyright Mario Possamato https://github.com/MarioPossamato/SMM2
-
+import io
 import struct
 import zlib
+
+from Crypto.Cipher import _mode_cbc, AES
 from Crypto.Hash import CMAC
-from Crypto.Cipher import AES
-from Crypto import Random
-from nintendo.sead import Random
+from Crypto.Random import get_random_bytes
 from nintendo.enl import crypto
-from SMM2 import streams
-from SMM2 import keytables
+from nintendo.sead import Random
 
-class Course:
-	def __init__(self, data=None):
-		if not data:
-			return None
-		else:
-			self.load(data)
+from . import keytables
 
-	def load(self, data=None):
-		if not data:
-			return None
-		else:
-			self.data = data
-			self.stream = streams.StreamIn(data)
 
-	def decrypt(self):
-		self.stream = streams.StreamIn(self.data)
+def decrypt_bcd(
+    data: bytes,
+    *args,
+    **kwargs
+) -> bytes:
+    stream: io.BytesIO = io.BytesIO(
+        data
+    )
 
-		self.header = self.stream.substream(0x10)
-		self.encrypted = self.stream.read(0x5BFC0)
-		self.cryptoConfig = self.stream.substream(0x30)
+    header: io.BytesIO = io.BytesIO(
+        stream.read(
+            0x10
+        )
+    )
+    encrypted: bytes = stream.read(
+        0x5bfc0
+    )
+    footer: io.BytesIO = io.BytesIO(
+        stream.read(
+            0x30
+        )
+    )
 
-		self.header.skip(0x4)
-		self.filetype = self.header.read(0x2)
-		self.header.skip(0x2)
-		self.crc32 = self.header.read(0x4)
-		self.magic = self.header.read(0x4)
+    header.seek(
+        header.tell() +
+        0x4
+    )
+    filetype: int = struct.unpack(
+        '<H',
+        header.read(
+            0x2
+        )
+    )[0]
+    header.seek(
+        header.tell() +
+        0x2
+    )
+    crc32: int = struct.unpack(
+        '<I',
+        header.read(0x4)
+    )[0]
+    magic: str = header.read(
+        0x4
+    ).decode(
+        'utf-8'
+    )
 
-		self.iv = self.cryptoConfig.read(0x10)
-		self.randomState = self.cryptoConfig.read(0x10)
-		self.cmac = self.cryptoConfig.read(0x10)
+    iv: bytes = footer.read(
+        0x10
+    )
+    seed: bytes = footer.read(
+        0x10
+    )
+    cmac: bytes = footer.read(
+        0x10
+    )
 
-		self.context = struct.unpack_from("<IIII", self.cryptoConfig.data, 0x10)
-		self.rand = Random(*self.context)
+    context: tuple = struct.unpack_from(
+        '<IIII',
+        footer.getvalue(),
+        0x10
+    )
+    random: Random = Random(
+        *context
+    )
 
-		self.key = crypto.create_key(self.rand, keytables.course, 0x10)
-		self.aes = AES.new(self.key, AES.MODE_CBC, self.iv)
-		self.decrypted = self.aes.decrypt(self.encrypted)
+    key: bytes = crypto.create_key(
+        random,
+        keytables.bcd,
+        0x10
+    )
+    aes: _mode_cbc.CbcMode = AES.new(
+        key,
+        AES.MODE_CBC,
+        iv
+    )
+    decrypted: bytes = aes.decrypt(
+        encrypted
+    )
 
-		self.key = crypto.create_key(self.rand, keytables.course, 0x10)
-		self.mac = CMAC.new(self.key, ciphermod=AES)
-		self.mac.update(self.decrypted)
-		self.mac.verify(self.cmac)
 
-		self.data = self.decrypted
+    key: bytes = crypto.create_key(
+        random,
+        keytables.bcd,
+        0x10
+    )
+    mac: CMAC.CMAC = CMAC.new(
+        key,
+        ciphermod=AES
+    )
+    mac.update(
+        decrypted
+    )
+    mac.verify(
+        cmac
+    )
 
-		return None
+    return decrypted
 
-	def encrypt(self):
-		self.stream = streams.StreamIn(self.data)
 
-		self.header = streams.StreamOut()
-		self.decrypted = self.stream.read(0x5BFC0)
+def encrypt_bcd(
+    data: bytes,
+    *args,
+    **kwargs
+) -> bytes:
+    stream: io.BytesIO = io.BytesIO(
+        data
+    )
 
-		self.header.write(struct.pack("<I", 0x1))
-		self.header.write(struct.pack("<H", 0x10))
-		self.header.write(struct.pack("<H", 0x0))
-		self.header.write(struct.pack("<I", zlib.crc32(self.decrypted)))
-		self.header.write("SCDL".encode("utf-8"))
+    header: io.BytesIO = io.BytesIO()
+    decrypted: bytes = stream.read(
+        0x5bfc0
+    )
 
-		self.randomState = Random.get_random_bytes(0x10)
+    header.write(
+        struct.pack(
+            '<I',
+            0x1
+        ) +
+        struct.pack(
+            '<H',
+            0x10
+        ) +
+        struct.pack(
+            '<H',
+            0x0
+        ) +
+        struct.pack(
+            '<I',
+            zlib.crc32(
+                decrypted
+            )
+        ) +
+        'SCDL'.encode(
+            'utf-8'
+        )
+    )
 
-		self.context = struct.unpack("<IIII", self.randomState)
-		self.rand = Random(*self.context)
-		
-		self.key = crypto.create_key(self.rand, keytables.course, 0x10)
-		self.aes = AES.new(self.key, AES.MODE_CBC, Random.get_random_bytes(0x10))
-		self.encrypted = self.aes.encrypt(self.decrypted)
+    seed: bytes = get_random_bytes(
+        0x10
+    )
 
-		self.key = crypto.create_key(self.rand, keytables.course, 0x10)
-		self.mac = CMAC.new(self.key, ciphermod=AES)
-		self.mac.update(self.decrypted)
-		self.mac.digest()
+    context: tuple = struct.unpack_from(
+        '<IIII',
+        seed
+    )
+    random: Random = Random(
+        *context
+    )
 
-		self.data = self.header.data() + self.encrypted + self.aes.iv + self.randomState + self.mac.digest()
+    key: bytes = crypto.create_key(
+        random,
+        keytables.bcd,
+        0x10
+    )
+    aes: _mode_cbc.CbcMode = AES.new(
+        key,
+        AES.MODE_CBC,
+        get_random_bytes(
+            0x10
+        )
+    )
+    encrypted: bytes = aes.encrypt(
+        decrypted
+    )
 
-		return None
+    key: bytes = crypto.create_key(
+        random,
+        keytables.bcd,
+        0x10
+    )
+    mac: CMAC.CMAC = CMAC.new(
+        key,
+        ciphermod=AES
+    )
+    mac.update(
+        decrypted
+    )
 
-class Thumbnail:
-	def __init__(self, data=None):
-		if not data:
-			return None
-		else:
-			self.load(data)
+    return header.getvalue() + encrypted + aes.iv + seed + mac.digest()
 
-	def load(self, data=None):
-		if not data:
-			return None
-		else:
-			self.data = data
-			self.stream = streams.StreamIn(data)
 
-	def decrypt(self):
-		self.stream = streams.StreamIn(self.data)
+def decrypt_btl(
+    data: bytes,
+    *args,
+    **kwargs
+) -> bytes:
+    stream: io.BytesIO = io.BytesIO(
+        data
+    )
 
-		self.encrypted = self.stream.read(0x1BFD0)
-		self.cryptoConfig = self.stream.substream(0x30)
+    encrypted: bytes = stream.read(
+        0x1bfd0
+    )
+    footer: io.BytesIO = io.BytesIO(
+        stream.read(
+            0x30
+        )
+    )
 
-		self.iv = self.cryptoConfig.read(0x10)
-		self.randomState = self.cryptoConfig.read(0x10)
-		self.cmac = self.cryptoConfig.read(0x10)
+    iv: bytes = footer.read(
+        0x10
+    )
+    seed: bytes = footer.read(
+        0x10
+    )
+    cmac: bytes = footer.read(
+        0x10
+    )
 
-		self.context = struct.unpack_from("<IIII", self.cryptoConfig.data, 0x10)
-		self.rand = Random(*self.context)
+    context: tuple = struct.unpack_from(
+        '<IIII',
+        footer.getvalue(),
+        0x10
+    )
+    random: Random = Random(*context)
 
-		self.key = crypto.create_key(self.rand, keytables.thumbnail, 0x10)
-		self.aes = AES.new(self.key, AES.MODE_CBC, self.iv)
-		self.decrypted = self.aes.decrypt(self.encrypted)
+    key: bytes = crypto.create_key(
+        random,
+        keytables.btl,
+        0x10
+    )
+    aes: _mode_cbc.CbcMode = AES.new(
+        key,
+        AES.MODE_CBC,
+        iv
+    )
+    decrypted: bytes = aes.decrypt(
+        encrypted
+    )
 
-		self.key = crypto.create_key(self.rand, keytables.thumbnail, 0x10)
-		self.mac = CMAC.new(self.key, ciphermod=AES)
-		self.mac.update(self.decrypted)
-		self.mac.verify(self.cmac)
+    key: bytes = crypto.create_key(
+        random,
+        keytables.btl,
+        0x10
+    )
+    mac: CMAC.CMAC = CMAC.new(
+        key,
+        ciphermod=AES
+    )
+    mac.update(
+        decrypted
+    )
+    mac.verify(
+        cmac
+    )
 
-		self.data = self.decrypted
+    return decrypted
 
-		return None
 
-	def encrypt(self):
-		self.stream = streams.StreamIn(self.data)
+def encrypt_btl(
+    data: bytes,
+    *args,
+    **kwargs
+) -> bytes:
+    stream: io.BytesIO = io.BytesIO(
+        data
+    )
 
-		self.decrypted = self.stream.read(0x1BFD0)
+    decrypted: bytes = stream.read(
+        0x1bfd0
+    )
 
-		self.randomState = Random.get_random_bytes(0x10)
+    seed: bytes = get_random_bytes(
+        0x10
+    )
 
-		self.context = struct.unpack("<IIII", self.randomState)
-		self.rand = Random(*self.context)
-		
-		self.key = crypto.create_key(self.rand, keytables.thumbnail, 0x10)
-		self.aes = AES.new(self.key, AES.MODE_CBC, Random.get_random_bytes(0x10))
-		self.encrypted = self.aes.encrypt(self.decrypted)
+    context: tuple = struct.unpack_from(
+        '<IIII',
+        seed
+    )
+    random: Random = Random(
+        *context
+    )
 
-		self.key = crypto.create_key(self.rand, keytables.thumbnail, 0x10)
-		self.mac = CMAC.new(self.key, ciphermod=AES)
-		self.mac.update(self.decrypted)
-		self.mac.digest()
+    key: bytes = crypto.create_key(
+        random,
+        keytables.btl,
+        0x10
+    )
+    aes: _mode_cbc.CbcMode = AES.new(
+        key,
+        AES.MODE_CBC,
+        get_random_bytes(
+            0x10
+        )
+    )
+    encrypted: bytes = aes.encrypt(
+        decrypted
+    )
 
-		self.data = self.encrypted + self.aes.iv + self.randomState + self.mac.digest()
+    key: bytes = crypto.create_key(
+        random,
+        keytables.btl,
+        0x10
+    )
+    mac: CMAC.CMAC = CMAC.new(
+        key,
+        ciphermod=AES
+    )
+    mac.update(
+        decrypted
+    )
 
-		return None
+    return encrypted + aes.iv + seed + mac.digest()
 
-class Save:
-	def __init__(self, data=None):
-		if not data:
-			return None
-		else:
-			self.load(data)
 
-	def load(self, data=None):
-		if not data:
-			return None
-		else:
-			self.data = data
-			self.stream = streams.StreamIn(data)
+class Course(
+    object
+):
 
-	def decrypt(self):
-		self.stream = streams.StreamIn(self.data)
+    def __init__(self, data: bytes, *args, **kwargs) -> None:
+        self.data: bytes = data
 
-		self.header = self.stream.substream(0x10)
-		self.encrypted = self.stream.read(0xBFC0)
-		self.cryptoConfig = self.stream.substream(0x30)
+    def decrypt(self, *args, **kwargs) -> None:
+        self.data: bytes = decrypt_bcd(self.data)
 
-		self.header.skip(0x4)
-		self.filetype = self.header.read(0x2)
-		self.header.skip(0x2)
-		self.crc32 = self.header.read(0x4)
-		self.magic = self.header.read(0x4)
-
-		self.iv = self.cryptoConfig.read(0x10)
-		self.randomState = self.cryptoConfig.read(0x10)
-		self.cmac = self.cryptoConfig.read(0x10)
-
-		self.context = struct.unpack_from("<IIII", self.cryptoConfig.data, 0x10)
-		self.rand = Random(*self.context)
-
-		self.key = crypto.create_key(self.rand, keytables.save, 0x10)
-		self.aes = AES.new(self.key, AES.MODE_CBC, self.iv)
-		self.decrypted = self.aes.decrypt(self.encrypted)
-
-		self.key = crypto.create_key(self.rand, keytables.save, 0x10)
-		self.mac = CMAC.new(self.key, ciphermod=AES)
-		self.mac.update(self.decrypted)
-		self.mac.verify(self.cmac)
-
-		self.data = self.decrypted
-
-		return None
+    def encrypt(self, *args, **kwargs) -> None:
+        self.data: bytes = encrypt_bcd(self.data)
