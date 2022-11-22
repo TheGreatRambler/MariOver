@@ -18,10 +18,11 @@ from fastapi.responses import Response, ORJSONResponse, FileResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.middleware.cors import CORSMiddleware
 from gen3_switchgame import Gen3Switchgame
+from nintendo import switch
 from nintendo.baas import BAASClient
 from nintendo.dauth import DAuthClient
+from nintendo.dragons import DragonsClient
 from nintendo.aauth import AAuthClient
-from nintendo.switch import ProdInfo, KeySet
 from nintendo.nex import backend, authentication, settings, datastore_smm2 as datastore
 from nintendo.games import SMM2
 from anynet import http
@@ -60,15 +61,16 @@ if args["keys"] is None:
 	print("Error")
 	exit(1)
 else:
-	keys = KeySet.load(args["keys"])
+	keys = switch.load_keys(args["keys"])
 
 if args["prodinfo"] is None:
 	print("Prodinfo not set")
 	print("Error")
 	exit(1)
 else:
-	info = ProdInfo(keys, args["prodinfo"])
+	info = switch.ProdInfo(keys, args["prodinfo"])
 
+# NOTE ticket is no longer used
 if args["ticket"] is None:
 	print("Ticket not set")
 	print("Error")
@@ -76,6 +78,20 @@ if args["ticket"] is None:
 else:
 	with open(args["ticket"], "rb") as f:
 		ticket = f.read()
+
+if args["elicense_id"] is None:
+	print("Elicense ID not set")
+	print("Error")
+	exit(1)
+else:
+	ELICENSE_ID = args["elicense_id"]
+
+if args["na_id"] is None:
+	print("NA ID not set")
+	print("Error")
+	exit(1)
+else:
+	NA_ID = int(args["na_id"], 16)
 
 # Used for scraping
 debug_enabled = False
@@ -1754,12 +1770,22 @@ async def check_tokens():
 			device_token = response["device_auth_token"]
 			print("Generated device token")
 
+			print("Generate contents token")
+			dragons = DragonsClient()
+			dragons.set_certificate(cert, pkey)
+			dragons.set_system_version(SYSTEM_VERSION)
+			response = await dauth.device_token(dauth.DRAGONS)
+			device_token_dragons = response["device_auth_token"]
+			response = await dragons.contents_authorization_token_for_aauth(device_token_dragons, ELICENSE_ID, NA_ID, SMM2.TITLE_ID)
+			contents_token = response["contents_authorization_token"]
+			print("Generated contents token")
+
 			print("Generate app token")
 			aauth = AAuthClient()
 			aauth.set_system_version(SYSTEM_VERSION)
 			response = await aauth.auth_digital(
 				SMM2.TITLE_ID, SMM2.LATEST_VERSION,
-				device_token, ticket
+				device_token, contents_token
 			)
 			app_token = response["application_auth_token"]
 			print("Generated app token")
