@@ -12,7 +12,7 @@ idna==2.9
 ipaddress==1.0.23
 keyring==10.6.0
 keyrings.alt==3.0
-lxml==4.9.0
+lxml==4.6.3
 netifaces==0.10.9
 pycparser==2.20
 pyOpenSSL==19.1.0
@@ -23,7 +23,7 @@ SecretStorage==2.3.1
 shutilwhich==1.1.0
 six==1.14.0
 soupsieve==1.9.5
-urllib3==1.26.12
+urllib3==1.25.9
 orjson==3.6.4
 fastapi==0.70.0
 uvicorn==0.15.0
