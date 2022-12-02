@@ -24,9 +24,17 @@ from nintendo.dauth import DAuthClient
 from nintendo.dragons import DragonsClient
 from nintendo.aauth import AAuthClient
 from nintendo.nex import backend, authentication, settings, datastore_smm2 as datastore
-from nintendo.games import SMM2
 from anynet import http
 from enum import IntEnum
+
+# https://github.com/kinnay/NintendoClients/blob/ab2b63a05c28e0939f1e93f2c576e3d7ca9db416/nintendo/games.py
+SMM2_GAME_SERVER_ID = 0x22306D00
+SMM2_TITLE_ID = 0x01009B90006DC000
+SMM2_LATEST_VERSION = 0x60000
+SMM2_ACCESS_KEY = "fdf6617f"
+SMM2_NEX_VERSION = 40605
+SMM2_CLIENT_VERSION = 60
+
 
 import logging
 logging.basicConfig(level=logging.INFO)
@@ -78,20 +86,6 @@ if args["ticket"] is None:
 else:
 	with open(args["ticket"], "rb") as f:
 		ticket = f.read()
-
-if args["elicense_id"] is None:
-	print("Elicense ID not set")
-	print("Error")
-	exit(1)
-else:
-	ELICENSE_ID = args["elicense_id"]
-
-if args["na_id"] is None:
-	print("NA ID not set")
-	print("Error")
-	exit(1)
-else:
-	NA_ID = int(args["na_id"], 16)
 
 # Used for scraping
 debug_enabled = False
@@ -1723,7 +1717,7 @@ async def obtain_ninji_ghosts(ninji_data_id, time, num, include_replay_files, sh
 	return ninji_ghosts_json
 
 
-HOST = "g%08x-lp1.s.n.srv.nintendo.net" % SMM2.GAME_SERVER_ID
+HOST = "g%08x-lp1.s.n.srv.nintendo.net" % SMM2_GAME_SERVER_ID
 PORT = 443
 s = None
 user_id = None
@@ -1731,6 +1725,8 @@ auth_info = None
 device_token_generated_time = None
 id_token_generated_time = None
 device_token = None
+elicense_id = None
+account_id = None
 app_token = None
 access_token = None
 id_token = None
@@ -1748,6 +1744,8 @@ async def check_tokens():
 	global device_token_generated_time
 	global id_token_generated_time
 	global device_token
+	global elicense_id
+	global account_id
 	global app_token
 	global access_token
 	global id_token
@@ -1770,13 +1768,38 @@ async def check_tokens():
 			device_token = response["device_auth_token"]
 			print("Generated device token")
 
-			print("Generate contents token")
-			dragons = DragonsClient()
+			print("Generate dragons device token")
+			dragons = DragonsClient(info.get_device_id())
 			dragons.set_certificate(cert, pkey)
 			dragons.set_system_version(SYSTEM_VERSION)
 			response = await dauth.device_token(dauth.DRAGONS)
 			device_token_dragons = response["device_auth_token"]
-			response = await dragons.contents_authorization_token_for_aauth(device_token_dragons, ELICENSE_ID, NA_ID, SMM2.TITLE_ID)
+			print("Generated dragons device token")
+
+			[dauth.SCSI, dauth.ATUM, dauth.ESHOP, dauth.BCAT, dauth.SATA, dauth.ACCOUNT, dauth.NPNS, dauth.BAAS, dauth.BEACH, dauth.DRAGONS, dauth.PCTL, dauth.PREPO]
+
+			print("Generate account device token")
+			response = await dauth.device_token(dauth.PREPO)
+			device_token_account = response["device_auth_token"]
+			print("Generated account device token")
+
+			print("Generate elicense and account id")
+			response = await dragons.publish_elicenses(device_token_dragons, device_token_account, [SMM2_TITLE_ID])
+			print(response)
+			found_elicense = False
+			for elicense in response["elicenses"]:
+				if elicense["rights_id"] == ("%016x" % SMM2_TITLE_ID) and elicense["status"] == "active":
+					elicense_id = elicense["elicense_id"]
+					account_id = int(elicense["account_id"], 16)
+					found_elicense = True
+			if not found_elicense:
+				print("No elicense found for Mario Maker 2")
+				print("Error")
+				exit(1)
+			print(elicense_id, account_id)
+			print("Generated elicense and account id")
+
+			response = await dragons.contents_authorization_token_for_aauth(device_token_dragons, elicense_id, account_id, SMM2_TITLE_ID)
 			contents_token = response["contents_authorization_token"]
 			print("Generated contents token")
 
@@ -1784,7 +1807,7 @@ async def check_tokens():
 			aauth = AAuthClient()
 			aauth.set_system_version(SYSTEM_VERSION)
 			response = await aauth.auth_digital(
-				SMM2.TITLE_ID, SMM2.LATEST_VERSION,
+				SMM2_TITLE_ID, SMM2_LATEST_VERSION,
 				device_token, contents_token
 			)
 			app_token = response["application_auth_token"]
@@ -1812,7 +1835,7 @@ async def check_tokens():
 
 			print("Loading settings")
 			s = settings.load("switch")
-			s.configure(SMM2.ACCESS_KEY, SMM2.NEX_VERSION, SMM2.CLIENT_VERSION)
+			s.configure(SMM2_ACCESS_KEY, SMM2_NEX_VERSION, SMM2_CLIENT_VERSION)
 			print("Loaded settings")
 	# Either has never been generated or is older than 2.9 hours
 	if id_token_generated_time is None or (milliseconds_since_epoch() - id_token_generated_time) > 1044000:
@@ -1836,7 +1859,7 @@ async def check_tokens():
 
 			print("Loading settings")
 			s = settings.load("switch")
-			s.configure(SMM2.ACCESS_KEY, SMM2.NEX_VERSION, SMM2.CLIENT_VERSION)
+			s.configure(SMM2_ACCESS_KEY, SMM2_NEX_VERSION, SMM2_CLIENT_VERSION)
 			print("Loaded settings")
 
 
