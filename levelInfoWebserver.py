@@ -23,6 +23,7 @@ from nintendo.baas import BAASClient
 from nintendo.dauth import DAuthClient
 from nintendo.dragons import DragonsClient
 from nintendo.aauth import AAuthClient
+from nintendo.switch import ProdInfo, KeySet
 from nintendo.nex import backend, authentication, settings, datastore_smm2 as datastore
 from anynet import http
 from enum import IntEnum
@@ -857,7 +858,7 @@ async def get_courses_data_id(data_ids, store):
 	param.data_ids = data_ids
 	param.option = datastore.CourseOption.ALL
 
-	courses_info_json = await get_course_info_json(CourseRequestType.data_ids, param, store)
+	courses_info_json = await get_course_info_json(CourseRequestType.data_ids_no_stop, param, store)
 
 	return courses_info_json
 
@@ -1439,6 +1440,8 @@ async def get_course_info_json(request_type, request_param, store, noCaching = F
 			course_info["difficulty"] = course.difficulty
 			course_info["tags_name"] = [TagNames[course.tag1], TagNames[course.tag2]]
 			course_info["tags"] = [course.tag1, course.tag2]
+			course_info["tag1"] = course.tag1
+			course_info["tag2"] = course.tag2
 			if course.time_stats.world_record != 4294967295:
 				course_info["world_record_pretty"] = format_time(course.time_stats.world_record)
 				course_info["world_record"] = course.time_stats.world_record
@@ -1452,16 +1455,14 @@ async def get_course_info_json(request_type, request_param, store, noCaching = F
 			if len(course.play_stats) == 5:
 				course_info["clears"] = course.play_stats[3]
 				course_info["attempts"] = course.play_stats[1]
-				if not debug_enabled:
-					if course.play_stats[1] == 0:
-						course_info["clear_rate"] = "0%"
-					else:
-						course_info["clear_rate"] = "%.2f%%" % ((course.play_stats[3] / course.play_stats[1]) * 100)
+				if course.play_stats[1] == 0:
+					course_info["clear_rate_pretty"] = "0%"
 				else:
-					if course.play_stats[1] == 0:
-						course_info["clear_rate"] = 0
-					else:
-						course_info["clear_rate"] = (course.play_stats[3] / course.play_stats[1]) * 100
+					course_info["clear_rate_pretty"] = "%.2f%%" % ((course.play_stats[3] / course.play_stats[1]) * 100)
+				if course.play_stats[1] == 0:
+					course_info["clear_rate"] = 0
+				else:
+					course_info["clear_rate"] = (course.play_stats[3] / course.play_stats[1]) * 100
 				course_info["plays"] = course.play_stats[0]
 				course_info["versus_matches"] = course.play_stats[4]
 				course_info["coop_matches"] = course.play_stats[2]
@@ -1949,6 +1950,45 @@ async def read_user_info(maker_id: str, noCaching: bool = False):
 
 					return ORJSONResponse(content=user_info_json)
 
+@app.get("/user_info_multiple/{pids}")
+async def user_info_multiple(pids: str):
+	corrected_pids = []
+	for id in pids.split(","):
+		corrected_pids.append(int(id))
+
+	if len(corrected_pids) > 500:
+		return ORJSONResponse(status_code=400, content={"error": "Number of pids requested must be between 1 and 500"})
+
+	await check_tokens()
+	async with lock:
+		async with backend.connect(s, HOST, PORT) as be:
+			async with be.login(str(user_id), auth_info=auth_info) as client:
+				store = datastore.DataStoreClientSMM2(client)
+				print("Want user infos for " + pids)
+
+				# Get user info for all pids				
+				param = datastore.GetUsersParam()
+				param.pids = corrected_pids
+				param.option = datastore.UserOption.ALL
+				response = await store.get_users(param)
+
+				# Filter out invalid users
+				# Can be determined by checking for a pid of 0
+				valid_users = []
+				for user in response.users:
+					if user.pid != 0:
+						valid_users.append(user)
+
+				# Put user info into a JSON object
+				user_info_json = {"users": []}
+				i = 0
+				for user in valid_users:
+					user_info_json["users"].append({})
+					add_user_info_json(user, user_info_json["users"][i])
+					i += 1
+
+				return ORJSONResponse(content=user_info_json)
+
 @app.get("/level_info_multiple/{course_ids}")
 async def read_level_infos(course_ids: str):
 	corrected_course_ids = []
@@ -1970,6 +2010,28 @@ async def read_level_infos(course_ids: str):
 				store = datastore.DataStoreClientSMM2(client)
 				print("Want course infos for " + course_ids)
 				course_info_json = await obtain_course_infos(corrected_course_ids, store)
+
+				if invalid_level(course_info_json):
+					return ORJSONResponse(status_code=400, content=course_info_json)
+
+				return ORJSONResponse(content=course_info_json)
+
+@app.get("/level_info_multiple_dataid/{data_ids}")
+async def read_level_infos_dataid(data_ids: str):
+	corrected_data_ids = []
+	for id in data_ids.split(","):
+		corrected_data_ids.append(int(id))
+
+	if len(corrected_data_ids) > 500:
+		return ORJSONResponse(status_code=400, content={"error": "Number of courses requested must be between 1 and 500"})
+
+	await check_tokens()
+	async with lock:
+		async with backend.connect(s, HOST, PORT) as be:
+			async with be.login(str(user_id), auth_info=auth_info) as client:
+				store = datastore.DataStoreClientSMM2(client)
+				print("Want course infos for " + data_ids)
+				course_info_json = await get_courses_data_id(corrected_data_ids, store)
 
 				if invalid_level(course_info_json):
 					return ORJSONResponse(status_code=400, content=course_info_json)
@@ -2508,6 +2570,29 @@ async def search_popular(count: int = 10, difficulty: str = "n", rejectRegions: 
 					return ORJSONResponse(status_code=400, content=courses_info_json)
 
 				return ORJSONResponse(content=courses_info_json)
+
+@app.get("/newest_data_id")
+async def newest_data_id():
+	count = 100
+	await check_tokens()
+	async with lock:
+		async with backend.connect(s, HOST, PORT) as be:
+			async with be.login(str(user_id), auth_info=auth_info) as client:
+				store = datastore.DataStoreClientSMM2(client)
+				print("Want %d latest courses" % count)
+				courses_info_json = await search_latest_courses(count, store)
+
+				if invalid_level(courses_info_json):
+					return ORJSONResponse(status_code=400, content=courses_info_json)
+
+				# Calculate max data_id from the JSON array
+				max_data_id = 0
+				for course_info in courses_info_json["courses"]:
+					if course_info["data_id"] > max_data_id:
+						max_data_id = course_info["data_id"]
+
+				# Put the max data_id into a new JSON object
+				return ORJSONResponse(content={"data_id": max_data_id})
 
 loop_handler = AsyncLoopThread()
 loop_handler.start()
