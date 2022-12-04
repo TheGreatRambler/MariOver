@@ -23,7 +23,6 @@ from nintendo.baas import BAASClient
 from nintendo.dauth import DAuthClient
 from nintendo.dragons import DragonsClient
 from nintendo.aauth import AAuthClient
-from nintendo.switch import ProdInfo, KeySet
 from nintendo.nex import backend, authentication, settings, datastore_smm2 as datastore
 from anynet import http
 from enum import IntEnum
@@ -87,6 +86,20 @@ if args["ticket"] is None:
 else:
 	with open(args["ticket"], "rb") as f:
 		ticket = f.read()
+
+if args["elicense_id"] is None:
+	print("Elicense ID not set")
+	print("Error")
+	exit(1)
+else:
+	ELICENSE_ID = args["elicense_id"]
+
+if args["na_id"] is None:
+	print("NA ID not set")
+	print("Error")
+	exit(1)
+else:
+	NA_ID = int(args["na_id"], 16)
 
 # Used for scraping
 debug_enabled = False
@@ -1726,8 +1739,6 @@ auth_info = None
 device_token_generated_time = None
 id_token_generated_time = None
 device_token = None
-elicense_id = None
-account_id = None
 app_token = None
 access_token = None
 id_token = None
@@ -1745,8 +1756,6 @@ async def check_tokens():
 	global device_token_generated_time
 	global id_token_generated_time
 	global device_token
-	global elicense_id
-	global account_id
 	global app_token
 	global access_token
 	global id_token
@@ -1769,38 +1778,13 @@ async def check_tokens():
 			device_token = response["device_auth_token"]
 			print("Generated device token")
 
-			print("Generate dragons device token")
-			dragons = DragonsClient(info.get_device_id())
+			print("Generate contents token")
+			dragons = DragonsClient()
 			dragons.set_certificate(cert, pkey)
 			dragons.set_system_version(SYSTEM_VERSION)
 			response = await dauth.device_token(dauth.DRAGONS)
 			device_token_dragons = response["device_auth_token"]
-			print("Generated dragons device token")
-
-			[dauth.SCSI, dauth.ATUM, dauth.ESHOP, dauth.BCAT, dauth.SATA, dauth.ACCOUNT, dauth.NPNS, dauth.BAAS, dauth.BEACH, dauth.DRAGONS, dauth.PCTL, dauth.PREPO]
-
-			print("Generate account device token")
-			response = await dauth.device_token(dauth.PREPO)
-			device_token_account = response["device_auth_token"]
-			print("Generated account device token")
-
-			print("Generate elicense and account id")
-			response = await dragons.publish_elicenses(device_token_dragons, device_token_account, [SMM2_TITLE_ID])
-			print(response)
-			found_elicense = False
-			for elicense in response["elicenses"]:
-				if elicense["rights_id"] == ("%016x" % SMM2_TITLE_ID) and elicense["status"] == "active":
-					elicense_id = elicense["elicense_id"]
-					account_id = int(elicense["account_id"], 16)
-					found_elicense = True
-			if not found_elicense:
-				print("No elicense found for Mario Maker 2")
-				print("Error")
-				exit(1)
-			print(elicense_id, account_id)
-			print("Generated elicense and account id")
-
-			response = await dragons.contents_authorization_token_for_aauth(device_token_dragons, elicense_id, account_id, SMM2_TITLE_ID)
+			response = await dragons.contents_authorization_token_for_aauth(device_token_dragons, ELICENSE_ID, NA_ID, SMM2_TITLE_ID)
 			contents_token = response["contents_authorization_token"]
 			print("Generated contents token")
 
