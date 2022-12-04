@@ -1472,10 +1472,6 @@ async def get_course_info_json(request_type, request_param, store, noCaching = F
 					course_info["clear_rate_pretty"] = "0%"
 				else:
 					course_info["clear_rate_pretty"] = "%.2f%%" % ((course.play_stats[3] / course.play_stats[1]) * 100)
-				if course.play_stats[1] == 0:
-					course_info["clear_rate"] = 0
-				else:
-					course_info["clear_rate"] = (course.play_stats[3] / course.play_stats[1]) * 100
 				course_info["plays"] = course.play_stats[0]
 				course_info["versus_matches"] = course.play_stats[4]
 				course_info["coop_matches"] = course.play_stats[2]
