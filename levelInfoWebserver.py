@@ -2497,6 +2497,25 @@ async def get_world_maps(map_id: str, noCaching: bool = False):
 
 					return ORJSONResponse(content=world_map)
 
+@app.get("/super_world_multiple/{map_ids}")
+async def get_world_maps(map_ids: str):
+	corrected_map_ids = []
+	for id in map_ids.split(","):
+		corrected_map_ids.append(id)
+	
+	await check_tokens()
+	async with lock:
+		async with backend.connect(s, HOST, PORT) as be:
+			async with be.login(str(user_id), auth_info=auth_info) as client:
+				store = datastore.DataStoreClientSMM2(client)
+				print("Want world maps %s" % map_ids)
+				world_maps = await search_world_map(store, corrected_map_ids)
+
+				if invalid_level(world_maps):
+					return ORJSONResponse(status_code=400, content=world_maps)
+
+				return ORJSONResponse(content=world_maps)
+
 @app.get("/search_endless_mode")
 async def search_endless_mode(count: int = 10, difficulty: str = "n"):
 	difficulty_num = difficulty_string_to_num(difficulty)
