@@ -584,33 +584,58 @@ class ServerHeaders:
 	world_map_thumbnails = ServerDataTypeHeader(ServerDataTypes.world_map_thumbnails)
 
 async def download_thumbnail(store, url, filename, data_type, save = True):
+#	if data_type == ServerDataTypes.level_thumbnail:
+#		body = await ServerHeaders.level_thumbnail.request_url(url, store)
+#		if body == False:
+#			return False
+#		else:
+#			image = Image.open(io.BytesIO(body))
+#			if save:
+#				image.save(filename, optimize=True, quality=95)
+#				return True
+#			else:
+#				image_bytes = io.BytesIO()
+#				image.save(image_bytes, optimize=True, quality=95, format="jpeg")
+#				return image_bytes.getvalue()
+#
+#	if data_type == ServerDataTypes.entire_level_thumbnail:
+#		body = await ServerHeaders.entire_level_thumbnail.request_url(url, store)
+#		if body == False:
+#			return False
+#		else:
+#			image = Image.open(io.BytesIO(body))
+#			if save:
+#				image.save(filename, optimize=True, quality=95)
+#				return True
+#			else:
+#				image_bytes = io.BytesIO()
+#				image.save(image_bytes, optimize=True, quality=95, format="jpeg")
+#				return image_bytes.getvalue()
+	# Intentionally disable optimizing so that header info
 	if data_type == ServerDataTypes.level_thumbnail:
 		body = await ServerHeaders.level_thumbnail.request_url(url, store)
 		if body == False:
 			return False
 		else:
-			image = Image.open(io.BytesIO(body))
 			if save:
-				image.save(filename, optimize=True, quality=95)
+				with open(filename, "wb") as f: 
+					f.write(body)
 				return True
 			else:
-				image_bytes = io.BytesIO()
-				image.save(image_bytes, optimize=True, quality=95, format="jpeg")
-				return image_bytes.getvalue()
+				return body
 
 	if data_type == ServerDataTypes.entire_level_thumbnail:
 		body = await ServerHeaders.entire_level_thumbnail.request_url(url, store)
 		if body == False:
 			return False
 		else:
-			image = Image.open(io.BytesIO(body))
 			if save:
-				image.save(filename, optimize=True, quality=95)
+				with open(filename, "wb") as f: 
+					f.write(body)
 				return True
 			else:
-				image_bytes = io.BytesIO()
-				image.save(image_bytes, optimize=True, quality=95, format="jpeg")
-				return image_bytes.getvalue()
+				return body
+
 
 def format_time(milliseconds):
 	seconds = (milliseconds // 1000) % 60
@@ -767,8 +792,8 @@ def get_mii_data(data):
 		mii_data += hexlify(pack(">B", n))
 		mii_bytes += hexlify(pack(">B", v)).decode("ascii")
 
-	url = "https://studio.mii.nintendo.com/miis/image.png?data=" + mii_data.decode("utf-8")
-	return [url + "&type=face&width=512&instanceCount=1", mii_bytes]
+	url = "https://studio.mii.nintendo.com/miis/image.png?data=" + mii_data.decode("utf-8") + "&type=face&width=512&instanceCount=1"
+	return [url, mii_bytes]
 
 async def obtain_course_info(course_id, store, noCaching = False):
 	param = datastore.GetUserOrCourseParam()
