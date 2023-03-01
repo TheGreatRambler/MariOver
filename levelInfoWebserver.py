@@ -1233,6 +1233,9 @@ async def search_world_map(store, ids, noCaching = False, save = True):
 
 		if debug_enabled and not save:
 			map_json["unk1"] = map.unk1
+		else:
+			map_json["unk1"] = base64.b64encode(map.unk1).decode("ascii")
+
 		map_json["unk5"] = map.unk5
 		map_json["unk6"] = map.unk6
 		map_json["unk7"] = map.unk7
