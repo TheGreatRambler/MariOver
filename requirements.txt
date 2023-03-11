@@ -27,7 +27,7 @@ urllib3==1.25.9
 orjson==3.6.4
 fastapi==0.70.0
 uvicorn==0.15.0
-anynet==0.0.18
+anynet==0.0.19
 grequests==0.6.0
 kaitaistruct==0.9
 Pillow==8.4.0
