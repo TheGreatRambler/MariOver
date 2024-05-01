@@ -1887,7 +1887,7 @@ class AsyncLoopThread(Thread):
 		self.loop.run_forever()
 
 app = FastAPI(openapi_url=None)
-lock = asyncio.Semaphore(3)
+lock = asyncio.Semaphore(5)
 
 app.add_middleware(
 	CORSMiddleware,
