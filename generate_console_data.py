@@ -9,7 +9,7 @@ import logging
 logging.basicConfig(level=logging.INFO)
 
 SMM2_TITLE_ID = 0x01009B90006DC000
-LATEST_VERSION = 1700
+LATEST_VERSION = 1801
 
 username = None
 password = None
