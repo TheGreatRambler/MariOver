@@ -2,14 +2,14 @@ import asyncio
 
 from anynet import tls
 from nintendo import switch
-from nintendo.dauth import DAuthClient, LATEST_VERSION
-from nintendo.dragons import DragonsClient
+from nintendo.switch import dauth, dragons
 from struct import unpack
 
 import logging
 logging.basicConfig(level=logging.INFO)
 
 SMM2_TITLE_ID = 0x01009B90006DC000
+LATEST_VERSION = 1700
 
 username = None
 password = None
@@ -30,9 +30,9 @@ async def create_args():
 	#with open("privkey.pem", mode="wb") as key_file:
 	#	key_file.write(pkey.encode(tls.TYPE_PEM))
 
-	dauth = DAuthClient(keys)
-	dauth.set_certificate(cert, pkey)
-	dauth.set_system_version(LATEST_VERSION)
+	dauth_client = dauth.DAuthClient(keys)
+	dauth_client.set_certificate(cert, pkey)
+	dauth_client.set_system_version(LATEST_VERSION)
 
 	# Obtain device ID from prodinfo
 	device_id = None
@@ -48,15 +48,15 @@ async def create_args():
 	#	ticket_start = 0x4 + 0x100 + 0x3C
 	#	account_id = unpack("L", ticket[ticket_start + 0x170:ticket_start + 0x170 + 0x4])[0]
 
-	dragons = DragonsClient(device_id)
-	dragons.set_certificate(cert, pkey)
-	dragons.set_system_version(LATEST_VERSION)
+	dragons_client = dragons.DragonsClient(device_id)
+	dragons_client.set_certificate(cert, pkey)
+	dragons_client.set_system_version(LATEST_VERSION)
 
 	# Obtain dragons elicense
-	response = await dauth.device_token(dauth.DRAGONS)
+	response = await dauth_client.device_token(dauth.CLIENT_ID_DRAGONS)
 	device_token_dragons = response["device_auth_token"]
 
-	response = await dragons.publish_device_linked_elicenses(device_token_dragons)
+	response = await dragons_client.publish_device_linked_elicenses(device_token_dragons)
 
 	# There are many valid, just choose the first that is active
 	for possible_license in response["elicenses"]:

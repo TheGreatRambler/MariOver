@@ -19,10 +19,7 @@ from fastapi.staticfiles import StaticFiles
 from fastapi.middleware.cors import CORSMiddleware
 from gen3_switchgame import Gen3Switchgame
 from nintendo import switch
-from nintendo.baas import BAASClient
-from nintendo.dauth import DAuthClient
-from nintendo.dragons import DragonsClient
-from nintendo.aauth import AAuthClient
+from nintendo.switch import dauth, aauth, baas, dragons
 from nintendo.nex import backend, authentication, settings, datastore_smm2 as datastore
 from anynet import http
 from enum import IntEnum
@@ -30,7 +27,7 @@ from enum import IntEnum
 # https://github.com/kinnay/NintendoClients/blob/ab2b63a05c28e0939f1e93f2c576e3d7ca9db416/nintendo/games.py
 SMM2_GAME_SERVER_ID = 0x22306D00
 SMM2_TITLE_ID = 0x01009B90006DC000
-SMM2_LATEST_VERSION = 0x60000
+SMM2_LATEST_VERSION = 0x70000
 SMM2_ACCESS_KEY = "fdf6617f"
 SMM2_NEX_VERSION = 40605
 SMM2_CLIENT_VERSION = 60
@@ -1799,27 +1796,27 @@ async def check_tokens():
 			pkey = info.get_tls_key()
 
 			print("Generate device token")
-			dauth = DAuthClient(keys)
-			dauth.set_certificate(cert, pkey)
-			dauth.set_system_version(SYSTEM_VERSION)
-			response = await dauth.device_token(dauth.BAAS)
+			dauth_client = dauth.DAuthClient(keys)
+			dauth_client.set_certificate(cert, pkey)
+			dauth_client.set_system_version(SYSTEM_VERSION)
+			response = await dauth_client.device_token(dauth.CLIENT_ID_BAAS)
 			device_token = response["device_auth_token"]
 			print("Generated device token")
 
 			print("Generate contents token")
-			dragons = DragonsClient()
-			dragons.set_certificate(cert, pkey)
-			dragons.set_system_version(SYSTEM_VERSION)
-			response = await dauth.device_token(dauth.DRAGONS)
+			dragons_client = dragons.DragonsClient()
+			dragons_client.set_certificate(cert, pkey)
+			dragons_client.set_system_version(SYSTEM_VERSION)
+			response = await dauth_client.device_token(dauth.CLIENT_ID_DRAGONS)
 			device_token_dragons = response["device_auth_token"]
-			response = await dragons.contents_authorization_token_for_aauth(device_token_dragons, ELICENSE_ID, NA_ID, SMM2_TITLE_ID)
+			response = await dragons_client.contents_authorization_token_for_aauth(device_token_dragons, ELICENSE_ID, NA_ID, SMM2_TITLE_ID)
 			contents_token = response["contents_authorization_token"]
 			print("Generated contents token")
 
 			print("Generate app token")
-			aauth = AAuthClient()
-			aauth.set_system_version(SYSTEM_VERSION)
-			response = await aauth.auth_digital(
+			aauth_client = aauth.AAuthClient()
+			aauth_client.set_system_version(SYSTEM_VERSION)
+			response = await aauth_client.auth_digital(
 				SMM2_TITLE_ID, SMM2_LATEST_VERSION,
 				device_token, contents_token
 			)
@@ -1830,11 +1827,11 @@ async def check_tokens():
 
 			id_token = None
 			print("Generate id token")
-			baas = BAASClient()
-			baas.set_system_version(SYSTEM_VERSION)
-			response = await baas.authenticate(device_token)
+			baas_client = baas.BAASClient()
+			baas_client.set_system_version(SYSTEM_VERSION)
+			response = await baas_client.authenticate(device_token)
 			access_token = response["accessToken"]
-			response = await baas.login(BAAS_USER_ID, BAAS_PASSWORD, access_token, app_token)
+			response = await baas_client.login(BAAS_USER_ID, BAAS_PASSWORD, access_token, app_token)
 			id_token = response["idToken"]
 			user_id = str(int(response["user"]["id"], 16))
 			print("Generated id token")
@@ -1854,11 +1851,11 @@ async def check_tokens():
 	if id_token_generated_time is None or (milliseconds_since_epoch() - id_token_generated_time) > 1044000:
 		async with getting_credentials:
 			print("Generate id token")
-			baas = BAASClient()
-			baas.set_system_version(SYSTEM_VERSION)
-			response = await baas.authenticate(device_token)
+			baas_client = baas.BAASClient()
+			baas_client.set_system_version(SYSTEM_VERSION)
+			response = await baas_client.authenticate(device_token)
 			access_token = response["accessToken"]
-			response = await baas.login(BAAS_USER_ID, BAAS_PASSWORD, access_token, app_token)
+			response = await baas_client.login(BAAS_USER_ID, BAAS_PASSWORD, access_token, app_token)
 			id_token = response["idToken"]
 			user_id = str(int(response["user"]["id"], 16))
 			print("Generated id token")
