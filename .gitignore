@@ -1,7 +1,7 @@
 cache
 dump
 processing
-ConsoleData
+ConsoleData*
 __pycache__
 webserver_args.json
 run.sh

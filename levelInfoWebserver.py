@@ -75,15 +75,6 @@ if args["prodinfo"] is None:
 else:
 	info = switch.ProdInfo(keys, args["prodinfo"])
 
-# NOTE ticket is no longer used
-if args["ticket"] is None:
-	print("Ticket not set")
-	print("Error")
-	exit(1)
-else:
-	with open(args["ticket"], "rb") as f:
-		ticket = f.read()
-
 if args["elicense_id"] is None:
 	print("Elicense ID not set")
 	print("Error")
