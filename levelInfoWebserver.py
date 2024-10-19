@@ -61,6 +61,13 @@ if args["password"] is None:
 else:
 	BAAS_PASSWORD = args["password"]
 
+if args["country"] is None:
+	print("Country not set")
+	print("Error")
+	exit(1)
+else:
+	BAAS_COUNTRY = args["country"]
+
 if args["keys"] is None:
 	print("Prod.keys not set")
 	print("Error")
@@ -1822,7 +1829,7 @@ async def check_tokens():
 			baas_client.set_system_version(SYSTEM_VERSION)
 			response = await baas_client.authenticate(device_token)
 			access_token = response["accessToken"]
-			response = await baas_client.login(BAAS_USER_ID, BAAS_PASSWORD, access_token, app_token)
+			response = await baas_client.login(BAAS_USER_ID, BAAS_PASSWORD, access_token, app_token=app_token, na_country=)
 			id_token = response["idToken"]
 			user_id = str(int(response["user"]["id"], 16))
 			print("Generated id token")
@@ -1846,7 +1853,7 @@ async def check_tokens():
 			baas_client.set_system_version(SYSTEM_VERSION)
 			response = await baas_client.authenticate(device_token)
 			access_token = response["accessToken"]
-			response = await baas_client.login(BAAS_USER_ID, BAAS_PASSWORD, access_token, app_token)
+			response = await baas_client.login(BAAS_USER_ID, BAAS_PASSWORD, access_token, app_token=app_token)
 			id_token = response["idToken"]
 			user_id = str(int(response["user"]["id"], 16))
 			print("Generated id token")
@@ -2612,6 +2619,29 @@ async def newest_data_id():
 
 				# Put the max data_id into a new JSON object
 				return ORJSONResponse(content={"data_id": max_data_id})
+
+@app.get("/user_info_pid/{pid}")
+async def read_user_info(pid: int, noCaching: bool = False):
+	await check_tokens()
+	async with lock:
+		async with backend.connect(s, HOST, PORT) as be:
+			async with be.login(str(user_id), auth_info=auth_info) as client:
+				store = datastore.DataStoreClientSMM2(client)
+				print("Want user info for pid %d" % pid)
+
+				param = datastore.GetUsersParam()
+				param.pids = [pid]
+				param.option = datastore.UserOption.ALL
+
+				users = (await store.get_users(param)).users
+
+				if users[0].pid == 0:
+					return ORJSONResponse(status_code=400, content={"error": "PID %d is an invalid user" % pid})
+
+				user_info_json = {}
+				add_user_info_json(users[0], user_info_json)
+				
+				return ORJSONResponse(content=user_info_json)
 
 loop_handler = AsyncLoopThread()
 loop_handler.start()
