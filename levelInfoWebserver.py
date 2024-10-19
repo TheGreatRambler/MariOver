@@ -1829,7 +1829,7 @@ async def check_tokens():
 			baas_client.set_system_version(SYSTEM_VERSION)
 			response = await baas_client.authenticate(device_token)
 			access_token = response["accessToken"]
-			response = await baas_client.login(BAAS_USER_ID, BAAS_PASSWORD, access_token, app_token=app_token, na_country=)
+			response = await baas_client.login(BAAS_USER_ID, BAAS_PASSWORD, access_token, app_token=app_token, na_country=BAAS_COUNTRY)
 			id_token = response["idToken"]
 			user_id = str(int(response["user"]["id"], 16))
 			print("Generated id token")
@@ -1853,7 +1853,7 @@ async def check_tokens():
 			baas_client.set_system_version(SYSTEM_VERSION)
 			response = await baas_client.authenticate(device_token)
 			access_token = response["accessToken"]
-			response = await baas_client.login(BAAS_USER_ID, BAAS_PASSWORD, access_token, app_token=app_token)
+			response = await baas_client.login(BAAS_USER_ID, BAAS_PASSWORD, access_token, app_token=app_token, na_country=BAAS_COUNTRY)
 			id_token = response["idToken"]
 			user_id = str(int(response["user"]["id"], 16))
 			print("Generated id token")
