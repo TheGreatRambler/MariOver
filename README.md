@@ -1,5 +1,11 @@
 # MariOver
-The backend of [the Mario Maker 2 API](https://tgrcode.com/mm2/docs/). Hey Nintendo, it's MariOver.
+The backend of [The Mario Maker 2 API](https://tgrcode.com/mm2/docs/). Hey Nintendo, it's MariOver.
+
+For more reading materials on this project check out:
+* [Mario Maker 2 Comments](https://tgrcode.com/posts/mario_maker_2_comments)
+* [Mario Maker 2 Datasets](https://tgrcode.com/posts/mario_maker_2_datasets)
+* [A Mario ML Diffusion Model](https://tgrcode.com/posts/a_mario_ml_diffusion_model)
+* [Mario Maker 2 Ninjis](https://tgrcode.com/posts/mario_maker_2_ninjis)
 
 # Setting up
 0. Run `pip install -r requirements.txt`
