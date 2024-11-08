@@ -9,7 +9,9 @@ import logging
 
 logging.basicConfig(level=logging.INFO)
 
+# TODO ask user for country, no accessible endpoint gives the country of my account automatically
 SMM2_TITLE_ID = 0x01009B90006DC000
+COUNTRY = "US"
 
 username = None
 password = None
@@ -75,13 +77,15 @@ async def create_args():
 	"keys": "./ConsoleData/prod.keys",
 	"prodinfo": "./ConsoleData/PRODINFO.dec",
 	"elicense_id": "%s",
-	"na_id": "%s"
+	"na_id": "%s",
+    "country": "%s"
 }""" % (
                     dauth.LATEST_VERSION,
                     username,
                     password,
                     possible_license["elicense_id"],
                     possible_license["account_id"],
+                    COUNTRY,
                 )
                 file.write(args)
             return
