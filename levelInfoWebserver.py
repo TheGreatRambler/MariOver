@@ -1963,8 +1963,8 @@ async def user_info_multiple(pids: str):
 	for id in pids.split(","):
 		corrected_pids.append(int(id))
 
-	if len(corrected_pids) > 500:
-		return ORJSONResponse(status_code=400, content={"error": "Number of pids requested must be between 1 and 500"})
+	if len(corrected_pids) > 100:
+		return ORJSONResponse(status_code=400, content={"error": "Number of pids requested must be between 1 and 100"})
 
 	await check_tokens()
 	async with lock:
@@ -2007,8 +2007,8 @@ async def read_level_infos(course_ids: str):
 			return ORJSONResponse(status_code=400, content={"error": "Code corresponds to a maker", "course_id": id})
 		corrected_course_ids.append(id)
 
-	if len(corrected_course_ids) > 500:
-		return ORJSONResponse(status_code=400, content={"error": "Number of courses requested must be between 1 and 500"})
+	if len(corrected_course_ids) > 100:
+		return ORJSONResponse(status_code=400, content={"error": "Number of courses requested must be between 1 and 100"})
 
 	await check_tokens()
 	async with lock:
@@ -2029,8 +2029,8 @@ async def read_level_infos_dataid(data_ids: str):
 	for id in data_ids.split(","):
 		corrected_data_ids.append(int(id))
 
-	if len(corrected_data_ids) > 500:
-		return ORJSONResponse(status_code=400, content={"error": "Number of courses requested must be between 1 and 500"})
+	if len(corrected_data_ids) > 100:
+		return ORJSONResponse(status_code=400, content={"error": "Number of courses requested must be between 1 and 100"})
 
 	await check_tokens()
 	async with lock:
@@ -2525,6 +2525,9 @@ async def get_world_maps(map_ids: str):
 	corrected_map_ids = []
 	for id in map_ids.split(","):
 		corrected_map_ids.append(id)
+
+	if len(map_ids) > 50:
+		return ORJSONResponse(status_code=400, content={"error": "Number of super worlds requested must be between 1 and 50"})
 	
 	await check_tokens()
 	async with lock:
