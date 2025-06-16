@@ -1,3 +1,3 @@
 #!/bin/sh
 
-uvicorn levelInfoWebserver:app --port 9876 --host 0.0.0.0
+uvicorn mariover:app --port 9876 --host 0.0.0.0

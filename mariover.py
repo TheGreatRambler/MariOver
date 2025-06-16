@@ -96,6 +96,13 @@ if args["na_id"] is None:
 else:
 	NA_ID = int(args["na_id"], 16)
 
+if args["penne_id"] is None:
+	print("Penne ID not set")
+	print("Error")
+	exit(1)
+else:
+	PENNE_ID = args["penne_id"]
+
 # Used for scraping
 debug_enabled = False
 if os.environ.get("SERVER_DEBUG_ENABLED") != None:
@@ -1759,9 +1766,9 @@ PORT = 443
 s = None
 user_id = None
 auth_info = None
-device_token_generated_time = None
+device_token_baas_generated_time = None
 id_token_generated_time = None
-device_token = None
+device_token_baas = None
 app_token = None
 access_token = None
 id_token = None
@@ -1776,9 +1783,9 @@ async def check_tokens():
 	global s
 	global user_id
 	global auth_info
-	global device_token_generated_time
+	global device_token_baas_generated_time
 	global id_token_generated_time
-	global device_token
+	global device_token_baas
 	global app_token
 	global access_token
 	global id_token
@@ -1788,46 +1795,53 @@ async def check_tokens():
 		async with getting_credentials:
 			return
 	# Either has never been generated or is older than 23.9 hours
-	if device_token_generated_time is None or (milliseconds_since_epoch() - device_token_generated_time) > 85340000:
+	if device_token_baas_generated_time is None or (milliseconds_since_epoch() - device_token_baas_generated_time) > 85340000:
 		async with getting_credentials:
 			cert = info.get_tls_cert()
 			pkey = info.get_tls_key()
 
-			print("Generate device token")
 			dauth_client = dauth.DAuthClient(keys)
 			dauth_client.set_certificate(cert, pkey)
 			dauth_client.set_system_version(SYSTEM_VERSION)
-			response = await dauth_client.device_token(dauth.CLIENT_ID_BAAS)
-			device_token = response["device_auth_token"]
+
+			dauth_cache = dauth.DAuthCache(dauth_client)
+
+			print("Generate device token")
+			device_token_baas = await dauth_cache.device_token(dauth.CLIENT_ID_BAAS)
 			print("Generated device token")
 
 			print("Generate contents token")
 			dragons_client = dragons.DragonsClient()
 			dragons_client.set_certificate(cert, pkey)
 			dragons_client.set_system_version(SYSTEM_VERSION)
-			response = await dauth_client.device_token(dauth.CLIENT_ID_DRAGONS)
-			device_token_dragons = response["device_auth_token"]
+			device_token_dragons = await dauth_cache.device_token(dauth.CLIENT_ID_DRAGONS)
 			response = await dragons_client.contents_authorization_token_for_aauth(device_token_dragons, ELICENSE_ID, NA_ID, SMM2_TITLE_ID)
 			contents_token = response["contents_authorization_token"]
 			print("Generated contents token")
 
 			print("Generate app token")
 			aauth_client = aauth.AAuthClient()
+			aauth_client.set_certificate(cert, pkey)
 			aauth_client.set_system_version(SYSTEM_VERSION)
 			response = await aauth_client.auth_digital(
 				SMM2_TITLE_ID, SMM2_LATEST_VERSION,
-				device_token, contents_token
+				device_token_baas, contents_token
 			)
 			app_token = response["application_auth_token"]
 			print("Generated app token")
 
-			device_token_generated_time = milliseconds_since_epoch()
+			if "errors" in response:
+				print("AAuth errors:")
+				print(response["errors"])
+				os._exit(0)
+				
+			device_token_baas_generated_time = milliseconds_since_epoch()
 
 			id_token = None
 			print("Generate id token")
 			baas_client = baas.BAASClient()
 			baas_client.set_system_version(SYSTEM_VERSION)
-			response = await baas_client.authenticate(device_token)
+			response = await baas_client.authenticate(device_token_baas, PENNE_ID)
 			access_token = response["accessToken"]
 			response = await baas_client.login(BAAS_USER_ID, BAAS_PASSWORD, access_token, app_token=app_token, na_country=BAAS_COUNTRY)
 			id_token = response["idToken"]
@@ -1851,7 +1865,7 @@ async def check_tokens():
 			print("Generate id token")
 			baas_client = baas.BAASClient()
 			baas_client.set_system_version(SYSTEM_VERSION)
-			response = await baas_client.authenticate(device_token)
+			response = await baas_client.authenticate(device_token_baas)
 			access_token = response["accessToken"]
 			response = await baas_client.login(BAAS_USER_ID, BAAS_PASSWORD, access_token, app_token=app_token, na_country=BAAS_COUNTRY)
 			id_token = response["idToken"]
