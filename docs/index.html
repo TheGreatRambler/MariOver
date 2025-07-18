@@ -154,7 +154,9 @@
 					<script>
 						(function() {
 							var course_id = document.getElementById("course_id_level_info");
-
+							course_id.addEventListener("input", function() {
+								this.value = this.value.replace(/-/g, "");
+							});
 							document.addEventListener("DOMContentLoaded", function() {
 								createLink([course_id], [val => val.length == 9 &&
 										/^[0123456789BCDFGHJKLMNPQRSTVWXYbcdfghjklmnpqrstvwxy]+$/.test(val)
