@@ -186,7 +186,9 @@
 					<script>
 						(function() {
 							var maker_id = document.getElementById("maker_id_user_info");
-
+							maker_id.addEventListener("input", function() {
+								this.value = this.value.replace(/-/g, "");
+							});
 							document.addEventListener("DOMContentLoaded", function() {
 								createLink([maker_id], [val => val.length == 9 &&
 										/^[0123456789BCDFGHJKLMNPQRSTVWXYbcdfghjklmnpqrstvwxy]+$/.test(val)
@@ -247,7 +249,9 @@
 					<script>
 						(function() {
 							var course_id = document.getElementById("course_id_level_comments");
-
+							course_id.addEventListener("input", function() {
+								this.value = this.value.replace(/-/g, "");
+							});
 							document.addEventListener("DOMContentLoaded", function() {
 								createLink([course_id], [val => val.length == 9 &&
 										/^[0123456789BCDFGHJKLMNPQRSTVWXYbcdfghjklmnpqrstvwxy]+$/.test(val)
@@ -276,7 +280,9 @@
 					<script>
 						(function() {
 							var course_id = document.getElementById("course_id_level_played");
-
+							course_id.addEventListener("input", function() {
+								this.value = this.value.replace(/-/g, "");
+							});
 							document.addEventListener("DOMContentLoaded", function() {
 								createLink([course_id], [val => val.length == 9 &&
 										/^[0123456789BCDFGHJKLMNPQRSTVWXYbcdfghjklmnpqrstvwxy]+$/.test(val)
@@ -305,7 +311,9 @@
 					<script>
 						(function() {
 							var course_id = document.getElementById("course_id_level_deaths");
-
+							course_id.addEventListener("input", function() {
+								this.value = this.value.replace(/-/g, "");
+							});
 							document.addEventListener("DOMContentLoaded", function() {
 								createLink([course_id], [val => val.length == 9 &&
 										/^[0123456789BCDFGHJKLMNPQRSTVWXYbcdfghjklmnpqrstvwxy]+$/.test(val)
@@ -334,7 +342,9 @@
 					<script>
 						(function() {
 							var course_id = document.getElementById("course_id_level_thumbnail");
-
+							course_id.addEventListener("input", function() {
+								this.value = this.value.replace(/-/g, "");
+							});
 							document.addEventListener("DOMContentLoaded", function() {
 								createLink([course_id], [val => val.length == 9 &&
 										/^[0123456789BCDFGHJKLMNPQRSTVWXYbcdfghjklmnpqrstvwxy]+$/.test(val)
@@ -363,7 +373,9 @@
 					<script>
 						(function() {
 							var course_id = document.getElementById("course_id_level_entire_thumbnail");
-
+							course_id.addEventListener("input", function() {
+								this.value = this.value.replace(/-/g, "");
+							});
 							document.addEventListener("DOMContentLoaded", function() {
 								createLink([course_id], [val => val.length == 9 &&
 										/^[0123456789BCDFGHJKLMNPQRSTVWXYbcdfghjklmnpqrstvwxy]+$/.test(val)
@@ -392,7 +404,9 @@
 					<script>
 						(function() {
 							var course_id = document.getElementById("course_id_level_data");
-
+							course_id.addEventListener("input", function() {
+								this.value = this.value.replace(/-/g, "");
+							});
 							document.addEventListener("DOMContentLoaded", function() {
 								createLink([course_id], [val => val.length == 9 &&
 										/^[0123456789BCDFGHJKLMNPQRSTVWXYbcdfghjklmnpqrstvwxy]+$/.test(val)
