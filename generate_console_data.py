@@ -5,6 +5,7 @@ from nintendo import switch
 from nintendo.switch import dauth, dragons
 from struct import unpack
 import os
+import json
 
 import logging
 
@@ -19,20 +20,22 @@ username = None
 password = None
 with open("ConsoleData/8000000000000010", mode="rb") as file:
     data = file.read()
-    username_bytes = bytearray(data[0x860020:0x860028])
+    username_bytes = bytearray(data[0x90020:0x90028])
     username_bytes.reverse()
     username = "0x" + username_bytes.hex().upper()
-    password = data[0x860028:0x860050].decode("ascii")
+    password = data[0x90028:0x90050].decode("ascii")
 
 penne_id = None
 with open("ConsoleData/8000000000000110", mode="rb") as file:
     data = file.read()
-    start = 0x50017
-    end = data.find(b'"', start)
-    if end == -1:
-        logging.critical("Closing quote for penne ID not found, aborting")
+    start = 0x50000
+    penne_data = json.JSONDecoder().raw_decode(
+        data[start : start + 0x1000].decode("ascii")
+    )[0]
+    if not "id" in penne_data:
+        logging.critical("Penne ID not found, aborting")
         os._exit(1)
-    penne_id = data[start:end].decode("ascii")
+    penne_id = penne_data["id"]
 
 
 async def create_args():
@@ -102,6 +105,9 @@ async def create_args():
     logging.critical("NO ELICENSE FOUND ON THIS DEVICE FOR SUPER MARIO MAKER 2")
     logging.critical(
         "Consider using Charles or another MITM proxy to find the elicense_id and na_id"
+    )
+    logging.critical(
+        "This is usually at URL `https://dragons.hac.lp1.dragons.nintendo.net/v2/contents_authorization_token_for_aauth/issue`"
     )
     logging.critical("Additionally, ensure this switch is the primary switch")
 

@@ -1840,7 +1840,9 @@ async def check_tokens():
 			id_token = None
 			print("Generate id token")
 			baas_client = baas.BAASClient()
+			baas_client.set_certificate(cert, pkey)
 			baas_client.set_system_version(SYSTEM_VERSION)
+			baas_client.set_host(baas_client.get_host(baas.MODULE_ACCOUNT))
 			response = await baas_client.authenticate(device_token_baas, PENNE_ID)
 			access_token = response["accessToken"]
 			response = await baas_client.login(BAAS_USER_ID, BAAS_PASSWORD, access_token, app_token=app_token, na_country=BAAS_COUNTRY)
@@ -1862,9 +1864,14 @@ async def check_tokens():
 	# Either has never been generated or is older than 2.9 hours
 	if id_token_generated_time is None or (milliseconds_since_epoch() - id_token_generated_time) > 1044000:
 		async with getting_credentials:
+			cert = info.get_tls_cert()
+			pkey = info.get_tls_key()
+			
 			print("Generate id token")
 			baas_client = baas.BAASClient()
+			baas_client.set_certificate(cert, pkey)
 			baas_client.set_system_version(SYSTEM_VERSION)
+			baas_client.set_host(baas_client.get_host(baas.MODULE_ACCOUNT))
 			response = await baas_client.authenticate(device_token_baas)
 			access_token = response["accessToken"]
 			response = await baas_client.login(BAAS_USER_ID, BAAS_PASSWORD, access_token, app_token=app_token, na_country=BAAS_COUNTRY)
