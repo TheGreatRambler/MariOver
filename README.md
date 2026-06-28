@@ -23,7 +23,7 @@ For more reading materials on this project check out:
     4. Repeat with `SYSTEM/save/8000000000000110`
 3. Run `python generate_console_data.py`
 4. Add the 2 letter country code of the host switch to `webserver_args.json` if it is not `US`
-4. When you update your switch and `NintendoClients` has updated, run `pip install git+https://github.com/kinnay/NintendoClients.git --upgrade --break-system-packages` and run `python generate_console_data.py` again
+4. When you update your switch and `NintendoClients` has updated, run `pip install git+https://github.com/kinnay/NintendoClients@master#egg=nintendoclients --upgrade --break-system-packages` and run `python generate_console_data.py` again
 
 # Running
 `uvicorn mariover:app --port 1234` with any port can be used to start the server. Documentation can be found at `http://localhost:1234/docs/`.
